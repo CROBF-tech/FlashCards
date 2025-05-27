@@ -1,109 +1,250 @@
 // screens/AddEditCardScreen.js
 import React, { useState } from 'react';
-import { View, Text, TextInput, Button, Alert, ScrollView } from 'react-native';
+import {
+    View,
+    Text,
+    TextInput,
+    TouchableOpacity,
+    ScrollView,
+    KeyboardAvoidingView,
+    Platform,
+    Alert,
+    StyleSheet,
+    ActivityIndicator,
+} from 'react-native';
+import { AntDesign } from '@expo/vector-icons';
 import axios from 'axios';
 import { API_URL } from '../config';
+import { theme, styles as globalStyles } from '../theme';
 
 export default function AddEditCardScreen({ route, navigation }) {
-  const { deckId, card } = route.params;
-  const [front, setFront] = useState(card?.front || '');
-  const [back, setBack] = useState(card?.back || '');
-  const [tags, setTags] = useState(card?.tags?.join(', ') || '');
-  const [isSubmitting, setIsSubmitting] = useState(false);
+    const { deckId, card } = route.params;
+    const [front, setFront] = useState(card?.front || '');
+    const [back, setBack] = useState(card?.back || '');
+    const [tags, setTags] = useState(card?.tags?.join(', ') || '');
+    const [isSubmitting, setIsSubmitting] = useState(false);
+    const [errors, setErrors] = useState({});
 
-  const handleSubmit = async () => {
-    if (!front.trim() || !back.trim()) {
-      Alert.alert('Error', 'El frente y reverso de la tarjeta son obligatorios');
-      return;
-    }
+    const validate = () => {
+        const newErrors = {};
+        if (!front.trim()) {
+            newErrors.front = 'El frente de la tarjeta es obligatorio';
+        }
+        if (!back.trim()) {
+            newErrors.back = 'El reverso de la tarjeta es obligatorio';
+        }
+        setErrors(newErrors);
+        return Object.keys(newErrors).length === 0;
+    };
 
-    // Convertir string de tags a array
-    const tagsArray = tags
-      .split(',')
-      .map(tag => tag.trim())
-      .filter(tag => tag !== '');
+    const handleSubmit = async () => {
+        if (!validate()) return;
 
-    setIsSubmitting(true);
-    try {
-      if (card) {
-        // Actualizar tarjeta existente
-        await axios.put(`${API_URL}/cards/${card.id}`, { 
-          front, 
-          back, 
-          tags: tagsArray 
-        });
-      } else {
-        // Crear nueva tarjeta
-        await axios.post(`${API_URL}/decks/${deckId}/cards`, { 
-          front, 
-          back, 
-          tags: tagsArray 
-        });
-      }
-      navigation.goBack();
-    } catch (err) {
-      console.error('Error al guardar tarjeta:', err);
-      Alert.alert('Error', 'No se pudo guardar la tarjeta. Intente nuevamente.');
-    } finally {
-      setIsSubmitting(false);
-    }
-  };
+        const tagsArray = tags
+            .split(',')
+            .map((tag) => tag.trim())
+            .filter((tag) => tag !== '');
 
-  return (
-    <ScrollView style={{ flex: 1, padding: 15 }}>
-      <Text style={{ marginBottom: 5 }}>Frente (Pregunta):</Text>
-      <TextInput
-        style={{ 
-          borderWidth: 1, 
-          borderColor: '#ccc',
-          borderRadius: 5,
-          padding: 10,
-          marginBottom: 15,
-          height: 100,
-          textAlignVertical: 'top'
-        }}
-        value={front}
-        onChangeText={setFront}
-        placeholder="Ingrese el frente de la tarjeta"
-        multiline
-      />
+        setIsSubmitting(true);
+        try {
+            if (card) {
+                await axios.put(`${API_URL}/cards/${card.id}`, {
+                    front,
+                    back,
+                    tags: tagsArray,
+                });
+            } else {
+                await axios.post(`${API_URL}/decks/${deckId}/cards`, {
+                    front,
+                    back,
+                    tags: tagsArray,
+                });
+            }
+            navigation.goBack();
+        } catch (err) {
+            console.error('Error al guardar tarjeta:', err);
+            Alert.alert('Error', 'No se pudo guardar la tarjeta. Intente nuevamente.', [{ text: 'OK' }]);
+        } finally {
+            setIsSubmitting(false);
+        }
+    };
 
-      <Text style={{ marginBottom: 5 }}>Reverso (Respuesta):</Text>
-      <TextInput
-        style={{ 
-          borderWidth: 1, 
-          borderColor: '#ccc',
-          borderRadius: 5,
-          padding: 10,
-          marginBottom: 15,
-          height: 150,
-          textAlignVertical: 'top'
-        }}
-        value={back}
-        onChangeText={setBack}
-        placeholder="Ingrese el reverso de la tarjeta"
-        multiline
-      />
+    const InputField = ({ label, value, onChangeText, error, multiline, placeholder }) => (
+        <View style={styles.inputGroup}>
+            <Text style={styles.label}>{label}</Text>
+            <View style={[styles.inputContainer, multiline && styles.textAreaContainer, error && styles.inputError]}>
+                <TextInput
+                    style={[styles.input, multiline && styles.textArea]}
+                    value={value}
+                    onChangeText={(text) => {
+                        onChangeText(text);
+                        setErrors((prev) => ({ ...prev, [label.toLowerCase()]: '' }));
+                    }}
+                    placeholder={placeholder}
+                    placeholderTextColor={theme.colors.text.disabled}
+                    multiline={multiline}
+                    numberOfLines={multiline ? 4 : 1}
+                    textAlignVertical={multiline ? 'top' : 'center'}
+                />
+            </View>
+            {error && <Text style={styles.errorText}>{error}</Text>}
+        </View>
+    );
 
-      <Text style={{ marginBottom: 5 }}>Etiquetas (separadas por comas):</Text>
-      <TextInput
-        style={{ 
-          borderWidth: 1, 
-          borderColor: '#ccc',
-          borderRadius: 5,
-          padding: 10,
-          marginBottom: 20
-        }}
-        value={tags}
-        onChangeText={setTags}
-        placeholder="ej: matemáticas, álgebra, fórmulas"
-      />
+    return (
+        <KeyboardAvoidingView style={globalStyles.container} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
+            <ScrollView contentContainerStyle={styles.scrollContent} keyboardShouldPersistTaps="handled">
+                <View style={styles.previewCard}>
+                    <Text style={styles.previewTitle}>Vista Previa</Text>
+                    <View style={styles.cardPreview}>
+                        <Text style={styles.previewText}>{front || 'Frente de la tarjeta...'}</Text>
+                    </View>
+                    <View style={[styles.cardPreview, styles.cardPreviewBack]}>
+                        <Text style={styles.previewText}>{back || 'Reverso de la tarjeta...'}</Text>
+                    </View>
+                </View>
 
-      <Button
-        title={card ? "Actualizar Tarjeta" : "Crear Tarjeta"}
-        onPress={handleSubmit}
-        disabled={isSubmitting}
-      />
-    </ScrollView>
-  );
+                <View style={styles.form}>
+                    <InputField
+                        label="Frente"
+                        value={front}
+                        onChangeText={setFront}
+                        error={errors.front}
+                        multiline
+                        placeholder="Ingrese la pregunta o el frente de la tarjeta"
+                    />
+
+                    <InputField
+                        label="Reverso"
+                        value={back}
+                        onChangeText={setBack}
+                        error={errors.back}
+                        multiline
+                        placeholder="Ingrese la respuesta o el reverso de la tarjeta"
+                    />
+
+                    <InputField
+                        label="Etiquetas"
+                        value={tags}
+                        onChangeText={setTags}
+                        placeholder="ej: matemáticas, álgebra, fórmulas (separadas por comas)"
+                    />
+
+                    <TouchableOpacity
+                        style={[styles.submitButton, isSubmitting && styles.submitButtonDisabled]}
+                        onPress={handleSubmit}
+                        disabled={isSubmitting}
+                    >
+                        {isSubmitting ? (
+                            <ActivityIndicator color={theme.colors.text.primary} />
+                        ) : (
+                            <>
+                                <AntDesign
+                                    name={card ? 'save' : 'plus'}
+                                    size={20}
+                                    color={theme.colors.text.primary}
+                                    style={styles.submitButtonIcon}
+                                />
+                                <Text style={styles.submitButtonText}>
+                                    {card ? 'Actualizar Tarjeta' : 'Crear Tarjeta'}
+                                </Text>
+                            </>
+                        )}
+                    </TouchableOpacity>
+                </View>
+            </ScrollView>
+        </KeyboardAvoidingView>
+    );
 }
+
+const styles = StyleSheet.create({
+    scrollContent: {
+        flexGrow: 1,
+    },
+    previewCard: {
+        backgroundColor: theme.colors.background.card,
+        borderRadius: theme.borderRadius.lg,
+        padding: theme.spacing.md,
+        marginBottom: theme.spacing.lg,
+    },
+    previewTitle: {
+        color: theme.colors.text.secondary,
+        fontSize: 14,
+        marginBottom: theme.spacing.md,
+    },
+    cardPreview: {
+        backgroundColor: theme.colors.background.elevated,
+        borderRadius: theme.borderRadius.md,
+        padding: theme.spacing.md,
+        marginBottom: theme.spacing.sm,
+        minHeight: 80,
+        justifyContent: 'center',
+    },
+    cardPreviewBack: {
+        borderStyle: 'dashed',
+        borderWidth: 1,
+        borderColor: theme.colors.border,
+    },
+    previewText: {
+        color: theme.colors.text.secondary,
+        fontSize: 14,
+        textAlign: 'center',
+    },
+    form: {
+        flex: 1,
+    },
+    inputGroup: {
+        marginBottom: theme.spacing.lg,
+    },
+    label: {
+        color: theme.colors.text.primary,
+        marginBottom: theme.spacing.sm,
+        fontSize: 16,
+        fontWeight: '500',
+    },
+    inputContainer: {
+        backgroundColor: theme.colors.background.elevated,
+        borderRadius: theme.borderRadius.md,
+        borderWidth: 1,
+        borderColor: theme.colors.border,
+    },
+    input: {
+        color: theme.colors.text.primary,
+        padding: theme.spacing.md,
+        fontSize: 16,
+    },
+    textAreaContainer: {
+        minHeight: 120,
+    },
+    textArea: {
+        height: 120,
+    },
+    inputError: {
+        borderColor: theme.colors.danger,
+    },
+    errorText: {
+        color: theme.colors.danger,
+        fontSize: 14,
+        marginTop: theme.spacing.xs,
+    },
+    submitButton: {
+        backgroundColor: theme.colors.primary,
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'center',
+        padding: theme.spacing.md,
+        borderRadius: theme.borderRadius.md,
+        marginVertical: theme.spacing.lg,
+    },
+    submitButtonDisabled: {
+        opacity: 0.6,
+    },
+    submitButtonIcon: {
+        marginRight: theme.spacing.sm,
+    },
+    submitButtonText: {
+        color: theme.colors.text.primary,
+        fontSize: 16,
+        fontWeight: '600',
+    },
+});

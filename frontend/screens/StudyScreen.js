@@ -1,149 +1,283 @@
 // screens/StudyScreen.js
 import React, { useState, useEffect } from 'react';
-import { View, Text, TouchableOpacity, Button, ActivityIndicator, ScrollView } from 'react-native';
+import {
+    View,
+    Text,
+    TouchableOpacity,
+    ActivityIndicator,
+    ScrollView,
+    StyleSheet,
+    Animated,
+    Dimensions,
+} from 'react-native';
+import { AntDesign } from '@expo/vector-icons';
 import axios from 'axios';
 import { API_URL } from '../config';
+import { theme, styles as globalStyles } from '../theme';
 
 export default function StudyScreen({ route, navigation }) {
-  const { deckId, deckName } = route.params;
-  const [cards, setCards] = useState([]);
-  const [currentCardIndex, setCurrentCardIndex] = useState(0);
-  const [showAnswer, setShowAnswer] = useState(false);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState(null);
-  const [studyComplete, setStudyComplete] = useState(false);
+    const { deckId } = route.params;
+    const [cards, setCards] = useState([]);
+    const [currentCardIndex, setCurrentCardIndex] = useState(0);
+    const [showAnswer, setShowAnswer] = useState(false);
+    const [loading, setLoading] = useState(true);
+    const [error, setError] = useState(null);
+    const [studyComplete, setStudyComplete] = useState(false);
+    const [flipAnim] = useState(new Animated.Value(0));
 
-  useEffect(() => {
-    fetchDueCards();
-  }, [deckId]);
+    useEffect(() => {
+        fetchDueCards();
+    }, [deckId]);
 
-  const fetchDueCards = async () => {
-    setLoading(true);
-    try {
-      const response = await axios.get(`${API_URL}/decks/${deckId}/study`);
-      setCards(response.data);
-      setCurrentCardIndex(0);
-      setShowAnswer(false);
-      setStudyComplete(response.data.length === 0);
-      setError(null);
-    } catch (err) {
-      console.error('Error al obtener tarjetas para estudiar:', err);
-      setError('Error al cargar las tarjetas. Intente nuevamente.');
-    } finally {
-      setLoading(false);
-    }
-  };
+    const fetchDueCards = async () => {
+        setLoading(true);
+        try {
+            const response = await axios.get(`${API_URL}/decks/${deckId}/study`);
+            setCards(response.data);
+            setCurrentCardIndex(0);
+            setShowAnswer(false);
+            setStudyComplete(response.data.length === 0);
+            setError(null);
+        } catch (err) {
+            console.error('Error al obtener tarjetas para estudiar:', err);
+            setError('Error al cargar las tarjetas. Intente nuevamente.');
+        } finally {
+            setLoading(false);
+        }
+    };
 
-  const handleReview = async (quality) => {
-    if (currentCardIndex >= cards.length) return;
-    
-    const currentCard = cards[currentCardIndex];
-    
-    try {
-      await axios.post(`${API_URL}/cards/${currentCard.id}/review`, { quality });
-      
-      // Avanzar a la siguiente tarjeta
-      if (currentCardIndex < cards.length - 1) {
-        setCurrentCardIndex(currentCardIndex + 1);
-        setShowAnswer(false);
-      } else {
-        setStudyComplete(true);
-      }
-    } catch (err) {
-      console.error('Error al enviar revisión:', err);
-      alert('Error al registrar la revisión. Intente nuevamente.');
-    }
-  };
+    const handleFlip = () => {
+        setShowAnswer(!showAnswer);
+        Animated.spring(flipAnim, {
+            toValue: showAnswer ? 0 : 1,
+            friction: 8,
+            tension: 10,
+            useNativeDriver: true,
+        }).start();
+    };
 
-  const renderQualityButtons = () => {
-    const qualities = [
-      { value: 0, label: 'Olvidé', color: '#ff6b6b' },
-      { value: 3, label: 'Difícil', color: '#ffa94d' },
-      { value: 4, label: 'Bien', color: '#69db7c' },
-      { value: 5, label: 'Fácil', color: '#4dabf7' }
-    ];
+    const handleReview = async (quality) => {
+        if (currentCardIndex >= cards.length) return;
 
-    return (
-      <View style={{ flexDirection: 'row', justifyContent: 'space-around', marginTop: 20 }}>
-        {qualities.map((q) => (
-          <TouchableOpacity
-            key={q.value}
-            style={{
-              backgroundColor: q.color,
-              padding: 10,
-              borderRadius: 5,
-              minWidth: 70,
-              alignItems: 'center'
-            }}
-            onPress={() => handleReview(q.value)}
-          >
-            <Text style={{ color: 'white' }}>{q.label}</Text>
-          </TouchableOpacity>
-        ))}
-      </View>
+        const currentCard = cards[currentCardIndex];
+
+        try {
+            await axios.post(`${API_URL}/cards/${currentCard.id}/review`, { quality });
+
+            if (currentCardIndex < cards.length - 1) {
+                setCurrentCardIndex(currentCardIndex + 1);
+                setShowAnswer(false);
+                flipAnim.setValue(0);
+            } else {
+                setStudyComplete(true);
+            }
+        } catch (err) {
+            console.error('Error al enviar revisión:', err);
+            alert('Error al registrar la revisión. Intente nuevamente.');
+        }
+    };
+
+    const renderQualityButton = (quality, label, color) => (
+        <TouchableOpacity
+            style={[styles.qualityButton, { backgroundColor: color }]}
+            onPress={() => handleReview(quality)}
+        >
+            <Text style={styles.qualityButtonText}>{label}</Text>
+        </TouchableOpacity>
     );
-  };
 
-  if (loading) {
-    return <ActivityIndicator size="large" style={{ flex: 1, justifyContent: 'center' }} />;
-  }
+    const frontAnimatedStyle = {
+        transform: [
+            {
+                rotateY: flipAnim.interpolate({
+                    inputRange: [0, 1],
+                    outputRange: ['0deg', '180deg'],
+                }),
+            },
+        ],
+    };
 
-  if (error) {
-    return (
-      <View style={{ flex: 1, padding: 20, alignItems: 'center', justifyContent: 'center' }}>
-        <Text style={{ color: 'red', marginBottom: 10 }}>{error}</Text>
-        <Button title="Reintentar" onPress={fetchDueCards} />
-      </View>
-    );
-  }
+    const backAnimatedStyle = {
+        transform: [
+            {
+                rotateY: flipAnim.interpolate({
+                    inputRange: [0, 1],
+                    outputRange: ['180deg', '360deg'],
+                }),
+            },
+        ],
+    };
 
-  if (studyComplete) {
-    return (
-      <View style={{ flex: 1, padding: 20, alignItems: 'center', justifyContent: 'center' }}>
-        <Text style={{ fontSize: 18, marginBottom: 20 }}>
-          ¡Felicidades! Has completado todas las tarjetas para hoy.
-        </Text>
-        <Button title="Volver al Mazo" onPress={() => navigation.goBack()} />
-      </View>
-    );
-  }
-
-  const currentCard = cards[currentCardIndex];
-
-  return (
-    <View style={{ flex: 1, padding: 15 }}>
-      <Text style={{ textAlign: 'center', marginBottom: 10 }}>
-        Tarjeta {currentCardIndex + 1} de {cards.length}
-      </Text>
-
-      <View style={{ 
-        flex: 1, 
-        backgroundColor: '#f9f9f9', 
-        borderRadius: 10,
-        padding: 15,
-        marginBottom: 15
-      }}>
-        <ScrollView>
-          <Text style={{ fontSize: 18, fontWeight: 'bold', marginBottom: 10 }}>Pregunta:</Text>
-          <Text style={{ fontSize: 16 }}>{currentCard.front}</Text>
-
-          {showAnswer && (
-            <View style={{ marginTop: 30 }}>
-              <Text style={{ fontSize: 18, fontWeight: 'bold', marginBottom: 10 }}>Respuesta:</Text>
-              <Text style={{ fontSize: 16 }}>{currentCard.back}</Text>
+    if (loading) {
+        return (
+            <View style={[globalStyles.container, styles.centerContent]}>
+                <ActivityIndicator size="large" color={theme.colors.primary} />
             </View>
-          )}
-        </ScrollView>
-      </View>
+        );
+    }
 
-      {!showAnswer ? (
-        <Button
-          title="Mostrar Respuesta"
-          onPress={() => setShowAnswer(true)}
-        />
-      ) : (
-        renderQualityButtons()
-      )}
-    </View>
-  );
+    if (error) {
+        return (
+            <View style={[globalStyles.container, styles.centerContent]}>
+                <Text style={styles.errorText}>{error}</Text>
+                <TouchableOpacity style={[globalStyles.button.primary, styles.retryButton]} onPress={fetchDueCards}>
+                    <Text style={globalStyles.buttonText.primary}>Reintentar</Text>
+                </TouchableOpacity>
+            </View>
+        );
+    }
+
+    if (studyComplete) {
+        return (
+            <View style={[globalStyles.container, styles.centerContent]}>
+                <AntDesign name="Trophy" size={64} color={theme.colors.primary} />
+                <Text style={styles.congratsText}>¡Felicidades!{'\n'}Has completado todas las tarjetas para hoy.</Text>
+                <TouchableOpacity
+                    style={[globalStyles.button.primary, styles.returnButton]}
+                    onPress={() => navigation.goBack()}
+                >
+                    <Text style={globalStyles.buttonText.primary}>Volver al Mazo</Text>
+                </TouchableOpacity>
+            </View>
+        );
+    }
+
+    const currentCard = cards[currentCardIndex];
+
+    return (
+        <View style={globalStyles.container}>
+            <View style={styles.progressContainer}>
+                <Text style={styles.progressText}>
+                    Tarjeta {currentCardIndex + 1} de {cards.length}
+                </Text>
+                <View style={styles.progressBar}>
+                    <View
+                        style={[styles.progressFill, { width: `${((currentCardIndex + 1) / cards.length) * 100}%` }]}
+                    />
+                </View>
+            </View>
+
+            <View style={styles.cardContainer}>
+                <TouchableOpacity activeOpacity={0.9} onPress={handleFlip}>
+                    <Animated.View style={[styles.card, !showAnswer ? frontAnimatedStyle : backAnimatedStyle]}>
+                        <ScrollView contentContainerStyle={styles.cardContent}>
+                            <Text style={styles.cardTitle}>{showAnswer ? 'Respuesta' : 'Pregunta'}</Text>
+                            <Text style={styles.cardText}>{showAnswer ? currentCard.back : currentCard.front}</Text>
+                            <Text style={styles.tapHint}>
+                                Toca para {showAnswer ? 'ver pregunta' : 'ver respuesta'}
+                            </Text>
+                        </ScrollView>
+                    </Animated.View>
+                </TouchableOpacity>
+            </View>
+
+            {showAnswer && (
+                <View style={styles.qualityButtonsContainer}>
+                    {renderQualityButton(0, 'Olvidé', theme.colors.danger)}
+                    {renderQualityButton(3, 'Difícil', theme.colors.warning)}
+                    {renderQualityButton(4, 'Bien', theme.colors.success)}
+                    {renderQualityButton(5, 'Fácil', theme.colors.secondary)}
+                </View>
+            )}
+        </View>
+    );
 }
+
+const styles = StyleSheet.create({
+    centerContent: {
+        justifyContent: 'center',
+        alignItems: 'center',
+    },
+    progressContainer: {
+        marginBottom: theme.spacing.md,
+    },
+    progressText: {
+        color: theme.colors.text.secondary,
+        marginBottom: theme.spacing.xs,
+        textAlign: 'center',
+    },
+    progressBar: {
+        height: 4,
+        backgroundColor: theme.colors.background.elevated,
+        borderRadius: 2,
+    },
+    progressFill: {
+        height: '100%',
+        backgroundColor: theme.colors.primary,
+        borderRadius: 2,
+    },
+    cardContainer: {
+        flex: 1,
+        alignItems: 'center',
+        justifyContent: 'center',
+        perspective: 1000,
+    },
+    card: {
+        width: Dimensions.get('window').width - theme.spacing.md * 2,
+        height: 400,
+        backgroundColor: theme.colors.background.card,
+        borderRadius: theme.borderRadius.lg,
+        padding: theme.spacing.lg,
+        backfaceVisibility: 'hidden',
+        elevation: 5,
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.25,
+        shadowRadius: 3.84,
+    },
+    cardContent: {
+        flex: 1,
+        justifyContent: 'center',
+        alignItems: 'center',
+    },
+    cardTitle: {
+        ...theme.typography.h3,
+        color: theme.colors.text.secondary,
+        marginBottom: theme.spacing.md,
+    },
+    cardText: {
+        ...theme.typography.body,
+        color: theme.colors.text.primary,
+        textAlign: 'center',
+        lineHeight: 24,
+    },
+    tapHint: {
+        ...theme.typography.caption,
+        color: theme.colors.text.secondary,
+        position: 'absolute',
+        bottom: 0,
+    },
+    qualityButtonsContainer: {
+        flexDirection: 'row',
+        justifyContent: 'space-around',
+        padding: theme.spacing.xs,
+    },
+    qualityButton: {
+        padding: theme.spacing.sm,
+        borderRadius: theme.borderRadius.md,
+        minWidth: 80,
+        alignItems: 'center',
+    },
+    qualityButtonText: {
+        color: theme.colors.text.primary,
+        fontWeight: '600',
+    },
+    errorText: {
+        color: theme.colors.danger,
+        marginBottom: theme.spacing.md,
+        textAlign: 'center',
+    },
+    retryButton: {
+        minWidth: 150,
+    },
+    congratsText: {
+        ...theme.typography.h2,
+        color: theme.colors.text.primary,
+        textAlign: 'center',
+        marginVertical: theme.spacing.xl,
+    },
+    returnButton: {
+        minWidth: 200,
+        marginTop: theme.spacing.xl,
+    },
+});

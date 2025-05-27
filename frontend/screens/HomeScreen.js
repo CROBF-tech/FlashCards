@@ -1,15 +1,10 @@
 // screens/HomeScreen.js
-import React, { useState, useEffect } from "react";
-import {
-    View,
-    Text,
-    FlatList,
-    TouchableOpacity,
-    Button,
-    ActivityIndicator,
-} from "react-native";
-import axios from "axios";
-import { API_URL } from "../config";
+import React, { useState, useEffect } from 'react';
+import { View, Text, FlatList, TouchableOpacity, ActivityIndicator, StyleSheet } from 'react-native';
+import { AntDesign } from '@expo/vector-icons';
+import axios from 'axios';
+import { API_URL } from '../config';
+import { theme, styles as globalStyles } from '../theme';
 
 export default function HomeScreen({ navigation }) {
     const [decks, setDecks] = useState([]);
@@ -20,9 +15,8 @@ export default function HomeScreen({ navigation }) {
         fetchDecks();
     }, []);
 
-    // Refrescar al volver a esta pantalla
     useEffect(() => {
-        const unsubscribe = navigation.addListener("focus", () => {
+        const unsubscribe = navigation.addListener('focus', () => {
             fetchDecks();
         });
         return unsubscribe;
@@ -35,8 +29,8 @@ export default function HomeScreen({ navigation }) {
             setDecks(response.data);
             setError(null);
         } catch (err) {
-            console.error("Error al obtener mazos:", err);
-            setError("Error al cargar los mazos. Intente nuevamente.");
+            console.error('Error al obtener mazos:', err);
+            setError('Error al cargar los mazos. Intente nuevamente.');
         } finally {
             setLoading(false);
         }
@@ -44,69 +38,157 @@ export default function HomeScreen({ navigation }) {
 
     const renderDeckItem = ({ item }) => (
         <TouchableOpacity
-            style={{
-                padding: 15,
-                borderBottomWidth: 1,
-                borderBottomColor: "#ccc",
-            }}
+            style={styles.deckCard}
             onPress={() =>
-                navigation.navigate("Deck", {
+                navigation.navigate('Deck', {
                     deckId: item.id,
                     deckName: item.name,
                 })
-            }>
-            <Text style={{ fontSize: 18 }}>{item.name}</Text>
-            {item.description ? (
-                <Text style={{ color: "#666", marginTop: 5 }}>
-                    {item.description}
-                </Text>
-            ) : null}
+            }
+        >
+            <View style={styles.deckInfo}>
+                <Text style={styles.deckName}>{item.name}</Text>
+                {item.description ? <Text style={styles.deckDescription}>{item.description}</Text> : null}
+            </View>
+            <AntDesign name="right" size={24} color={theme.colors.text.secondary} />
         </TouchableOpacity>
     );
 
-    return (
-        <View style={{ flex: 1 }}>
-            {loading ? (
-                <ActivityIndicator size="large" style={{ marginTop: 20 }} />
-            ) : error ? (
-                <View style={{ padding: 20, alignItems: "center" }}>
-                    <Text style={{ color: "red", marginBottom: 10 }}>
-                        {error}
-                    </Text>
-                    <Button title="Reintentar" onPress={fetchDecks} />
-                </View>
-            ) : (
-                <FlatList
-                    data={decks}
-                    renderItem={renderDeckItem}
-                    keyExtractor={(item) => item.id.toString()}
-                    ListEmptyComponent={
-                        <Text style={{ padding: 20, textAlign: "center" }}>
-                            No hay mazos disponibles. Crea uno nuevo.
-                        </Text>
-                    }
-                />
-            )}
+    if (loading) {
+        return (
+            <View style={globalStyles.container}>
+                <ActivityIndicator size="large" color={theme.colors.primary} />
+            </View>
+        );
+    }
 
-            <View
-                style={{
-                    flexDirection: "row",
-                    padding: 10,
-                    justifyContent: "space-around",
-                }}>
-                <Button
-                    title="Nuevo Mazo"
-                    onPress={() => navigation.navigate("AddEditDeck")}
-                />
-                <Button
-                    title="Buscar"
-                    onPress={() => navigation.navigate("Search")}
-                />
-                <Button
-                    title="Estadísticas"
-                    onPress={() => navigation.navigate("Stats")}
-                />
+    if (error) {
+        return (
+            <View style={[globalStyles.container, styles.centerContent]}>
+                <Text style={styles.errorText}>{error}</Text>
+                <TouchableOpacity style={[globalStyles.button.primary, styles.retryButton]} onPress={fetchDecks}>
+                    <Text style={globalStyles.buttonText.primary}>Reintentar</Text>
+                </TouchableOpacity>
+            </View>
+        );
+    }
+
+    return (
+        <View style={globalStyles.container}>
+            <FlatList
+                data={decks}
+                renderItem={renderDeckItem}
+                keyExtractor={(item) => item.id.toString()}
+                contentContainerStyle={styles.listContainer}
+                ListEmptyComponent={
+                    <View style={styles.emptyContainer}>
+                        <AntDesign name="inbox" size={48} color={theme.colors.text.secondary} />
+                        <Text style={styles.emptyText}>No hay mazos disponibles.{'\n'}¡Crea uno nuevo!</Text>
+                    </View>
+                }
+            />
+
+            {/* Botones flotantes */}
+            <View style={styles.fabContainer}>
+                <TouchableOpacity
+                    style={[styles.fabButton, styles.fabPrimary]}
+                    onPress={() => navigation.navigate('AddEditDeck')}
+                >
+                    <AntDesign name="plus" size={24} color={theme.colors.text.primary} />
+                </TouchableOpacity>
+                <View style={styles.fabSecondaryContainer}>
+                    <TouchableOpacity
+                        style={[styles.fabButton, styles.fabSecondary]}
+                        onPress={() => navigation.navigate('Search')}
+                    >
+                        <AntDesign name="search1" size={24} color={theme.colors.text.primary} />
+                    </TouchableOpacity>
+                    <TouchableOpacity
+                        style={[styles.fabButton, styles.fabSecondary]}
+                        onPress={() => navigation.navigate('Stats')}
+                    >
+                        <AntDesign name="barschart" size={24} color={theme.colors.text.primary} />
+                    </TouchableOpacity>
+                </View>
             </View>
         </View>
     );
 }
+
+const styles = StyleSheet.create({
+    listContainer: {
+        flexGrow: 1,
+        paddingBottom: theme.spacing.xl * 2,
+    },
+    deckCard: {
+        ...globalStyles.card,
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'space-between',
+    },
+    deckInfo: {
+        flex: 1,
+        marginRight: theme.spacing.md,
+    },
+    deckName: {
+        ...theme.typography.h3,
+        color: theme.colors.text.primary,
+        marginBottom: theme.spacing.xs,
+    },
+    deckDescription: {
+        ...theme.typography.body,
+        color: theme.colors.text.secondary,
+    },
+    centerContent: {
+        justifyContent: 'center',
+        alignItems: 'center',
+    },
+    errorText: {
+        color: theme.colors.danger,
+        marginBottom: theme.spacing.md,
+        textAlign: 'center',
+    },
+    retryButton: {
+        minWidth: 150,
+    },
+    emptyContainer: {
+        flex: 1,
+        justifyContent: 'center',
+        alignItems: 'center',
+        marginTop: theme.spacing.xl * 2,
+    },
+    emptyText: {
+        ...theme.typography.body,
+        color: theme.colors.text.secondary,
+        textAlign: 'center',
+        marginTop: theme.spacing.md,
+    },
+    fabContainer: {
+        position: 'absolute',
+        right: theme.spacing.md,
+        bottom: theme.spacing.md,
+        alignItems: 'flex-end',
+    },
+    fabSecondaryContainer: {
+        marginBottom: theme.spacing.sm,
+    },
+    fabButton: {
+        width: 56,
+        height: 56,
+        borderRadius: 28,
+        justifyContent: 'center',
+        alignItems: 'center',
+        elevation: 6,
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.25,
+        shadowRadius: 3.84,
+        marginBottom: theme.spacing.sm,
+    },
+    fabPrimary: {
+        backgroundColor: theme.colors.primary,
+    },
+    fabSecondary: {
+        backgroundColor: theme.colors.background.elevated,
+    },
+});
