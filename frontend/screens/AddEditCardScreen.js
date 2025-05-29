@@ -68,28 +68,6 @@ export default function AddEditCardScreen({ route, navigation }) {
         }
     };
 
-    const InputField = ({ label, value, onChangeText, error, multiline, placeholder }) => (
-        <View style={styles.inputGroup}>
-            <Text style={styles.label}>{label}</Text>
-            <View style={[styles.inputContainer, multiline && styles.textAreaContainer, error && styles.inputError]}>
-                <TextInput
-                    style={[styles.input, multiline && styles.textArea]}
-                    value={value}
-                    onChangeText={(text) => {
-                        onChangeText(text);
-                        setErrors((prev) => ({ ...prev, [label.toLowerCase()]: '' }));
-                    }}
-                    placeholder={placeholder}
-                    placeholderTextColor={theme.colors.text.disabled}
-                    multiline={multiline}
-                    numberOfLines={multiline ? 4 : 1}
-                    textAlignVertical={multiline ? 'top' : 'center'}
-                />
-            </View>
-            {error && <Text style={styles.errorText}>{error}</Text>}
-        </View>
-    );
-
     return (
         <KeyboardAvoidingView style={globalStyles.container} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
             <ScrollView contentContainerStyle={styles.scrollContent} keyboardShouldPersistTaps="handled">
@@ -104,30 +82,52 @@ export default function AddEditCardScreen({ route, navigation }) {
                 </View>
 
                 <View style={styles.form}>
-                    <InputField
-                        label="Frente"
-                        value={front}
-                        onChangeText={setFront}
-                        error={errors.front}
-                        multiline
-                        placeholder="Ingrese la pregunta o el frente de la tarjeta"
-                    />
+                    <View style={styles.inputGroup}>
+                        <Text style={styles.label}>Frente</Text>
+                        <TextInput
+                            style={[styles.input, styles.textArea]}
+                            value={front}
+                            onChangeText={(text) => {
+                                setFront(text);
+                                setErrors((prev) => ({ ...prev, front: '' }));
+                            }}
+                            placeholder="Ingrese la pregunta o el frente de la tarjeta"
+                            placeholderTextColor={theme.colors.text.disabled}
+                            multiline
+                            numberOfLines={4}
+                            textAlignVertical="top"
+                        />
+                        {errors.front && <Text style={styles.errorText}>{errors.front}</Text>}
+                    </View>
 
-                    <InputField
-                        label="Reverso"
-                        value={back}
-                        onChangeText={setBack}
-                        error={errors.back}
-                        multiline
-                        placeholder="Ingrese la respuesta o el reverso de la tarjeta"
-                    />
+                    <View style={styles.inputGroup}>
+                        <Text style={styles.label}>Reverso</Text>
+                        <TextInput
+                            style={[styles.input, styles.textArea]}
+                            value={back}
+                            onChangeText={(text) => {
+                                setBack(text);
+                                setErrors((prev) => ({ ...prev, back: '' }));
+                            }}
+                            placeholder="Ingrese la respuesta o el reverso de la tarjeta"
+                            placeholderTextColor={theme.colors.text.disabled}
+                            multiline
+                            numberOfLines={4}
+                            textAlignVertical="top"
+                        />
+                        {errors.back && <Text style={styles.errorText}>{errors.back}</Text>}
+                    </View>
 
-                    <InputField
-                        label="Etiquetas"
-                        value={tags}
-                        onChangeText={setTags}
-                        placeholder="ej: matemáticas, álgebra, fórmulas (separadas por comas)"
-                    />
+                    <View style={styles.inputGroup}>
+                        <Text style={styles.label}>Etiquetas</Text>
+                        <TextInput
+                            style={styles.input}
+                            value={tags}
+                            onChangeText={setTags}
+                            placeholder="ej: matemáticas, álgebra, fórmulas (separadas por comas)"
+                            placeholderTextColor={theme.colors.text.disabled}
+                        />
+                    </View>
 
                     <TouchableOpacity
                         style={[styles.submitButton, isSubmitting && styles.submitButtonDisabled]}
@@ -201,22 +201,18 @@ const styles = StyleSheet.create({
         fontSize: 16,
         fontWeight: '500',
     },
-    inputContainer: {
+    input: {
+        color: theme.colors.text.primary,
+        padding: theme.spacing.md,
+        fontSize: 16,
         backgroundColor: theme.colors.background.elevated,
         borderRadius: theme.borderRadius.md,
         borderWidth: 1,
         borderColor: theme.colors.border,
     },
-    input: {
-        color: theme.colors.text.primary,
-        padding: theme.spacing.md,
-        fontSize: 16,
-    },
-    textAreaContainer: {
-        minHeight: 120,
-    },
     textArea: {
         height: 120,
+        textAlignVertical: 'top',
     },
     inputError: {
         borderColor: theme.colors.danger,

@@ -212,7 +212,6 @@ export default function DeckScreen({ route, navigation }) {
                     disabled={cards.length === 0}
                 >
                     <AntDesign name="book" size={20} color={theme.colors.text.primary} />
-                    <Text style={styles.studyButtonText}>Estudiar</Text>
                 </TouchableOpacity>
 
                 <TouchableOpacity
@@ -220,7 +219,6 @@ export default function DeckScreen({ route, navigation }) {
                     onPress={() => navigation.navigate('AddEditCard', { deckId })}
                 >
                     <AntDesign name="plus" size={20} color={theme.colors.text.primary} />
-                    <Text style={styles.addButtonText}>Añadir Tarjeta</Text>
                 </TouchableOpacity>
 
                 <TouchableOpacity
@@ -228,12 +226,10 @@ export default function DeckScreen({ route, navigation }) {
                     onPress={() => navigation.navigate('AddEditDeck', { deck })}
                 >
                     <AntDesign name="edit" size={20} color={theme.colors.text.primary} />
-                    <Text style={styles.editDeckButtonText}>Editar Mazo</Text>
                 </TouchableOpacity>
 
                 <TouchableOpacity style={[styles.footerButton, styles.deleteButton]} onPress={deleteDeck}>
                     <AntDesign name="delete" size={20} color={theme.colors.danger} />
-                    <Text style={styles.deleteButtonText}>Eliminar</Text>
                 </TouchableOpacity>
             </View>
         </View>
@@ -381,21 +377,6 @@ const styles = StyleSheet.create({
     },
     editDeckButton: {
         backgroundColor: theme.colors.secondary,
-    },
-    studyButtonText: {
-        color: theme.colors.text.primary,
-        marginLeft: theme.spacing.xs,
-        fontWeight: '600',
-    },
-    addButtonText: {
-        color: theme.colors.text.primary,
-        marginLeft: theme.spacing.xs,
-        fontWeight: '600',
-    },
-    editDeckButtonText: {
-        color: theme.colors.text.primary,
-        marginLeft: theme.spacing.xs,
-        fontWeight: '600',
     },
     errorText: {
         color: theme.colors.danger,

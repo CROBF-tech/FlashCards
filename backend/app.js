@@ -278,13 +278,13 @@ app.delete('/cards/:id', auth, async (req, res) => {
 });
 
 // Rutas para estudio
-app.get('/decks/:id/study', async (req, res) => {
+app.get('/decks/:id/study', auth, async (req, res) => {
     try {
-        const cards = await db.getDueCards(parseInt(req.params.id));
+        const cards = await db.getDueCards(parseInt(req.params.id), req.user.id, 20);
         res.json(
             cards.map((card) => ({
                 ...card,
-                tags: JSON.parse(card.tags),
+                tags: card.tags ? JSON.parse(card.tags) : [],
             }))
         );
     } catch (error) {
@@ -293,14 +293,14 @@ app.get('/decks/:id/study', async (req, res) => {
     }
 });
 
-app.post('/cards/:id/review', async (req, res) => {
+app.post('/cards/:id/review', auth, async (req, res) => {
     try {
         const { quality } = req.body;
         if (typeof quality !== 'number' || quality < 0 || quality > 5) {
             return res.status(400).json({ error: 'La calificación debe estar entre 0 y 5' });
         }
 
-        const card = await db.getCard(parseInt(req.params.id));
+        const card = await db.getCard(parseInt(req.params.id), req.user.id);
         if (!card) {
             return res.status(404).json({ error: 'Tarjeta no encontrada' });
         }
@@ -319,7 +319,7 @@ app.post('/cards/:id/review', async (req, res) => {
             return res.status(500).json({ error: 'Error al actualizar datos de revisión' });
         }
 
-        await db.recordReview(card.id, quality);
+        await db.recordReview(card.id, quality, req.user.id);
         res.json(result);
     } catch (error) {
         console.error('Error al procesar revisión:', error);
