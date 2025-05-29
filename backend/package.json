@@ -2,6 +2,7 @@
     "name": "flashcards-backend",
     "version": "1.0.0",
     "description": "Backend para la aplicación FlashCards",
+    "type": "module",
     "main": "app.js",
     "scripts": {
         "start": "node app.js",

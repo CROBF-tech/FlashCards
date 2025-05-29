@@ -1,11 +1,13 @@
-const express = require('express');
-const cors = require('cors');
-const bcrypt = require('bcryptjs');
-const jwt = require('jsonwebtoken');
-const db = require('./database');
-const auth = require('./middleware/auth');
-const userRoutes = require('./routes/user');
-require('dotenv').config();
+import express from 'express';
+import cors from 'cors';
+import bcrypt from 'bcryptjs';
+import jwt from 'jsonwebtoken';
+import { config } from 'dotenv';
+import db from './database.js';
+import auth from './middleware/auth.js';
+import userRoutes from './routes/user.js';
+
+config();
 
 const app = express();
 const port = process.env.PORT || 8000;

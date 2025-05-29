@@ -1,6 +1,6 @@
-const express = require('express');
-const auth = require('../middleware/auth');
-const db = require('../database');
+import express from 'express';
+import auth from '../middleware/auth.js';
+import db from '../database.js';
 
 const router = express.Router();
 
@@ -28,4 +28,4 @@ router.delete('/delete', auth, async (req, res) => {
     }
 });
 
-module.exports = router;
+export default router;

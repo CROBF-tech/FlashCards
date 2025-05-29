@@ -1,5 +1,7 @@
-const { createClient } = require('@libsql/client');
-require('dotenv').config();
+import { createClient } from '@libsql/client';
+import { config } from 'dotenv';
+
+config();
 
 class FlashcardsDB {
     constructor() {
@@ -373,4 +375,4 @@ class FlashcardsDB {
     }
 }
 
-module.exports = new FlashcardsDB();
+export default new FlashcardsDB();
