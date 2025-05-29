@@ -11,8 +11,7 @@ import {
     Dimensions,
 } from 'react-native';
 import { AntDesign } from '@expo/vector-icons';
-import axios from 'axios';
-import { API_URL } from '../config';
+import api from '../utils/api';
 import { theme, styles as globalStyles } from '../theme';
 
 export default function StatsScreen() {
@@ -28,7 +27,7 @@ export default function StatsScreen() {
     const fetchStats = async () => {
         setLoading(true);
         try {
-            const response = await axios.get(`${API_URL}/stats`);
+            const response = await api.get('/stats');
             setStats(response.data);
             setError(null);
         } catch (err) {

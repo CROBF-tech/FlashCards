@@ -11,14 +11,27 @@ class FlashcardsDB {
     }
 
     async initDB() {
-        // Crear tabla decks
+        // Crear tabla users
+        await this.client.execute(`
+            CREATE TABLE IF NOT EXISTS users (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                username TEXT NOT NULL UNIQUE,
+                email TEXT NOT NULL UNIQUE,
+                password TEXT NOT NULL,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            )
+        `);
+
+        // Crear tabla decks con referencia a users
         await this.client.execute(`
             CREATE TABLE IF NOT EXISTS decks (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
+                user_id INTEGER NOT NULL,
                 name TEXT NOT NULL,
                 description TEXT,
                 created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-                updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+                updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
             )
         `);
 
@@ -45,9 +58,11 @@ class FlashcardsDB {
             CREATE TABLE IF NOT EXISTS reviews (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
                 card_id INTEGER NOT NULL,
+                user_id INTEGER NOT NULL,
                 quality INTEGER NOT NULL,
                 timestamp TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-                FOREIGN KEY (card_id) REFERENCES cards(id) ON DELETE CASCADE
+                FOREIGN KEY (card_id) REFERENCES cards(id) ON DELETE CASCADE,
+                FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
             )
         `);
 
@@ -63,14 +78,50 @@ class FlashcardsDB {
         await this.client.execute(`
             CREATE INDEX IF NOT EXISTS idx_reviews_card_id ON reviews(card_id)
         `);
+
+        await this.client.execute(`
+            CREATE INDEX IF NOT EXISTS idx_decks_user_id ON decks(user_id)
+        `);
     }
 
-    // Métodos para mazos
-    async getDeck(deckId) {
+    // Métodos de autenticación
+    async createUser(username, email, password) {
         try {
             const result = await this.client.execute({
-                sql: 'SELECT id, name, description, created_at FROM decks WHERE id = ?',
-                args: [deckId],
+                sql: 'INSERT INTO users (username, email, password) VALUES (?, ?, ?) RETURNING id',
+                args: [username, email, password],
+            });
+            return result.rows[0].id;
+        } catch (error) {
+            if (error.message.includes('UNIQUE constraint failed')) {
+                throw new Error('El usuario o email ya existe');
+            }
+            throw error;
+        }
+    }
+
+    async getUserByEmail(email) {
+        const result = await this.client.execute({
+            sql: 'SELECT * FROM users WHERE email = ?',
+            args: [email],
+        });
+        return result.rows[0];
+    }
+
+    async getUserById(id) {
+        const result = await this.client.execute({
+            sql: 'SELECT id, username, email, created_at FROM users WHERE id = ?',
+            args: [id],
+        });
+        return result.rows[0];
+    }
+
+    // Métodos para mazos (actualizados para usuarios)
+    async getDeck(deckId, userId) {
+        try {
+            const result = await this.client.execute({
+                sql: 'SELECT id, name, description, created_at FROM decks WHERE id = ? AND user_id = ?',
+                args: [deckId, userId],
             });
             return result.rows[0];
         } catch (error) {
@@ -79,55 +130,68 @@ class FlashcardsDB {
         }
     }
 
-    async getAllDecks() {
-        const result = await this.client.execute('SELECT id, name, description, created_at FROM decks ORDER BY name');
+    async getAllDecks(userId) {
+        const result = await this.client.execute({
+            sql: 'SELECT id, name, description, created_at FROM decks WHERE user_id = ? ORDER BY name',
+            args: [userId],
+        });
         return result.rows;
     }
 
-    async createDeck(name, description = '') {
+    async createDeck(name, description = '', userId) {
         const result = await this.client.execute({
-            sql: 'INSERT INTO decks (name, description) VALUES (?, ?) RETURNING id',
-            args: [name, description],
+            sql: 'INSERT INTO decks (name, description, user_id) VALUES (?, ?, ?) RETURNING id',
+            args: [name, description, userId],
         });
         return result.rows[0].id;
     }
 
-    async updateDeck(name, description, deckId) {
+    async updateDeck(name, description, deckId, userId) {
         const result = await this.client.execute({
-            sql: 'UPDATE decks SET name = ?, description = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?',
-            args: [name, description, deckId],
+            sql: 'UPDATE decks SET name = ?, description = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ? AND user_id = ?',
+            args: [name, description, deckId, userId],
         });
         return result.rowsAffected > 0;
     }
 
-    async deleteDeck(deckId) {
+    async deleteDeck(deckId, userId) {
         const result = await this.client.execute({
-            sql: 'DELETE FROM decks WHERE id = ?',
-            args: [deckId],
+            sql: 'DELETE FROM decks WHERE id = ? AND user_id = ?',
+            args: [deckId, userId],
         });
         return result.rowsAffected > 0;
     }
 
-    // Métodos para tarjetas
-    async getCardsByDeck(deckId) {
+    // Métodos para tarjetas (actualizados para usuarios)
+    async getCardsByDeck(deckId, userId) {
         const result = await this.client.execute({
-            sql: `SELECT id, front, back, tags, interval, ease_factor, repetitions, due_date 
-                  FROM cards WHERE deck_id = ?`,
-            args: [deckId],
+            sql: `SELECT c.id, c.front, c.back, c.tags, c.interval, c.ease_factor, c.repetitions, c.due_date 
+                  FROM cards c
+                  JOIN decks d ON c.deck_id = d.id
+                  WHERE c.deck_id = ? AND d.user_id = ?`,
+            args: [deckId, userId],
         });
         return result.rows;
     }
 
-    async getCard(cardId) {
+    async getCard(cardId, userId) {
         const result = await this.client.execute({
-            sql: `SELECT id, deck_id, front, back, tags, interval, ease_factor, repetitions, due_date
-                  FROM cards WHERE id = ?`,
-            args: [cardId],
+            sql: `SELECT c.id, c.deck_id, c.front, c.back, c.tags, c.interval, c.ease_factor, c.repetitions, c.due_date
+                  FROM cards c
+                  JOIN decks d ON c.deck_id = d.id
+                  WHERE c.id = ? AND d.user_id = ?`,
+            args: [cardId, userId],
         });
         return result.rows[0];
     }
 
-    async createCard(deckId, front, back, tags = []) {
+    async createCard(deckId, front, back, tags = [], userId) {
+        // Verificar que el mazo pertenece al usuario
+        const deck = await this.getDeck(deckId, userId);
+        if (!deck) {
+            throw new Error('Mazo no encontrado');
+        }
+
         const result = await this.client.execute({
             sql: `INSERT INTO cards (deck_id, front, back, tags, due_date)
                   VALUES (?, ?, ?, ?, date('now')) RETURNING id`,
@@ -136,7 +200,12 @@ class FlashcardsDB {
         return result.rows[0].id;
     }
 
-    async updateCard(cardId, front, back, tags) {
+    async updateCard(cardId, front, back, tags, userId) {
+        const card = await this.getCard(cardId, userId);
+        if (!card) {
+            return false;
+        }
+
         const result = await this.client.execute({
             sql: `UPDATE cards 
                   SET front = ?, back = ?, tags = ?, updated_at = CURRENT_TIMESTAMP
@@ -146,20 +215,29 @@ class FlashcardsDB {
         return result.rowsAffected > 0;
     }
 
-    async deleteCard(cardId) {
-        const result = await this.client.execute({ sql: `DELETE FROM cards WHERE id = ?`, args: [cardId] });
+    async deleteCard(cardId, userId) {
+        const card = await this.getCard(cardId, userId);
+        if (!card) {
+            return false;
+        }
+
+        const result = await this.client.execute({
+            sql: 'DELETE FROM cards WHERE id = ?',
+            args: [cardId],
+        });
         return result.rowsAffected > 0;
     }
 
-    // Métodos para el sistema de repaso espaciado
-    async getDueCards(deckId, limit = 20) {
+    // Métodos para el sistema de repaso espaciado (actualizados para usuarios)
+    async getDueCards(deckId, userId, limit = 20) {
         const result = await this.client.execute({
-            sql: `SELECT id, front, back, tags, interval, ease_factor, repetitions, due_date
-                  FROM cards
-                  WHERE deck_id = ? AND due_date <= date('now')
-                  ORDER BY due_date
+            sql: `SELECT c.id, c.front, c.back, c.tags, c.interval, c.ease_factor, c.repetitions, c.due_date
+                  FROM cards c
+                  JOIN decks d ON c.deck_id = d.id
+                  WHERE c.deck_id = ? AND d.user_id = ? AND c.due_date <= date('now')
+                  ORDER BY c.due_date
                   LIMIT ?`,
-            args: [deckId, limit],
+            args: [deckId, userId, limit],
         });
         return result.rows;
     }
@@ -175,23 +253,28 @@ class FlashcardsDB {
         return result.rowsAffected > 0;
     }
 
-    async recordReview(cardId, quality) {
+    async recordReview(cardId, quality, userId) {
+        const card = await this.getCard(cardId, userId);
+        if (!card) {
+            return false;
+        }
+
         const result = await this.client.execute({
-            sql: 'INSERT INTO reviews (card_id, quality) VALUES (?, ?)',
-            args: [cardId, quality],
+            sql: 'INSERT INTO reviews (card_id, user_id, quality) VALUES (?, ?, ?)',
+            args: [cardId, userId, quality],
         });
         return result.rowsAffected > 0;
     }
 
-    // Métodos para búsqueda
-    async searchCards(query = '', tag = '') {
+    // Métodos para búsqueda (actualizados para usuarios)
+    async searchCards(query = '', tag = '', userId) {
         let sql = `
             SELECT c.id, c.deck_id, c.front, c.back, c.tags, d.name as deck_name
             FROM cards c
             JOIN decks d ON c.deck_id = d.id
-            WHERE 1=1
+            WHERE d.user_id = ?
         `;
-        const args = [];
+        const args = [userId];
 
         if (query) {
             sql += ' AND (c.front LIKE ? OR c.back LIKE ?)';
@@ -211,8 +294,14 @@ class FlashcardsDB {
         return result.rows;
     }
 
-    async getAllTags() {
-        const result = await this.client.execute('SELECT tags FROM cards');
+    async getAllTags(userId) {
+        const result = await this.client.execute({
+            sql: `SELECT c.tags
+                  FROM cards c
+                  JOIN decks d ON c.deck_id = d.id
+                  WHERE d.user_id = ?`,
+            args: [userId],
+        });
         const tagsSet = new Set();
 
         result.rows.forEach((card) => {
@@ -223,17 +312,45 @@ class FlashcardsDB {
         return Array.from(tagsSet).sort();
     }
 
-    // Métodos para estadísticas
-    async getStudyStats() {
-        const totalCards = (await this.client.execute('SELECT COUNT(*) as count FROM cards')).rows[0].count;
-        const totalDecks = (await this.client.execute('SELECT COUNT(*) as count FROM decks')).rows[0].count;
+    // Métodos para estadísticas (actualizados para usuarios)
+    async getStudyStats(userId) {
+        const totalCards = (
+            await this.client.execute(
+                `SELECT COUNT(*) as count 
+                 FROM cards c
+                 JOIN decks d ON c.deck_id = d.id
+                 WHERE d.user_id = ?`,
+                [userId]
+            )
+        ).rows[0].count;
+
+        const totalDecks = (
+            await this.client.execute('SELECT COUNT(*) as count FROM decks WHERE user_id = ?', [userId])
+        ).rows[0].count;
+
         const dueToday = (
-            await this.client.execute("SELECT COUNT(*) as count FROM cards WHERE due_date <= date('now')")
+            await this.client.execute(
+                `SELECT COUNT(*) as count 
+                 FROM cards c
+                 JOIN decks d ON c.deck_id = d.id
+                 WHERE d.user_id = ? AND c.due_date <= date('now')`,
+                [userId]
+            )
         ).rows[0].count;
+
         const reviewsLastWeek = (
-            await this.client.execute("SELECT COUNT(*) as count FROM reviews WHERE timestamp >= date('now', '-7 days')")
+            await this.client.execute(
+                `SELECT COUNT(*) as count 
+                 FROM reviews r
+                 WHERE r.user_id = ? AND r.timestamp >= date('now', '-7 days')`,
+                [userId]
+            )
         ).rows[0].count;
-        const avgQualityResult = await this.client.execute('SELECT AVG(quality) as avg FROM reviews');
+
+        const avgQualityResult = await this.client.execute(
+            'SELECT AVG(quality) as avg FROM reviews WHERE user_id = ?',
+            [userId]
+        );
         const avgQuality = avgQualityResult.rows[0].avg || 0;
 
         return {

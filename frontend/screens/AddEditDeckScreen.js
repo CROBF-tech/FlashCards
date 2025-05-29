@@ -13,8 +13,7 @@ import {
     Alert,
 } from 'react-native';
 import { AntDesign } from '@expo/vector-icons';
-import axios from 'axios';
-import { API_URL } from '../config';
+import api from '../utils/api';
 import { theme, styles as globalStyles } from '../theme';
 
 export default function AddEditDeckScreen({ route, navigation }) {
@@ -39,9 +38,9 @@ export default function AddEditDeckScreen({ route, navigation }) {
         setIsSubmitting(true);
         try {
             if (existingDeck) {
-                await axios.put(`${API_URL}/decks/${existingDeck.id}`, { name, description });
+                await api.put(`/decks/${existingDeck.id}`, { name, description });
             } else {
-                await axios.post(`${API_URL}/decks`, { name, description });
+                await api.post('/decks', { name, description });
             }
             navigation.goBack();
         } catch (err) {

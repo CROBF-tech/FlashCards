@@ -1,12 +1,13 @@
 // screens/HomeScreen.js
 import React, { useState, useEffect } from 'react';
-import { View, Text, FlatList, TouchableOpacity, ActivityIndicator, StyleSheet } from 'react-native';
+import { View, Text, FlatList, TouchableOpacity, ActivityIndicator, StyleSheet, Alert } from 'react-native';
 import { AntDesign } from '@expo/vector-icons';
-import axios from 'axios';
-import { API_URL } from '../config';
+import api from '../utils/api';
 import { theme, styles as globalStyles } from '../theme';
+import { useAuth } from '../context/AuthContext';
 
 export default function HomeScreen({ navigation }) {
+    const { logout } = useAuth();
     const [decks, setDecks] = useState([]);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState(null);
@@ -25,7 +26,7 @@ export default function HomeScreen({ navigation }) {
     const fetchDecks = async () => {
         setLoading(true);
         try {
-            const response = await axios.get(`${API_URL}/decks`);
+            const response = await api.get('/decks');
             setDecks(response.data);
             setError(null);
         } catch (err) {
@@ -33,6 +34,14 @@ export default function HomeScreen({ navigation }) {
             setError('Error al cargar los mazos. Intente nuevamente.');
         } finally {
             setLoading(false);
+        }
+    };
+
+    const handleLogout = async () => {
+        try {
+            await logout();
+        } catch (error) {
+            Alert.alert('Error', 'No se pudo cerrar sesión');
         }
     };
 
@@ -75,6 +84,14 @@ export default function HomeScreen({ navigation }) {
 
     return (
         <View style={globalStyles.container}>
+            <View style={styles.header}>
+                <Text style={styles.title}>Mis Mazos</Text>
+                <View style={styles.headerButtons}>
+                    <TouchableOpacity onPress={handleLogout} style={styles.logoutButton}>
+                        <AntDesign name="logout" size={24} color={theme.colors.text.primary} />
+                    </TouchableOpacity>
+                </View>
+            </View>
             <FlatList
                 data={decks}
                 renderItem={renderDeckItem}
@@ -116,6 +133,28 @@ export default function HomeScreen({ navigation }) {
 }
 
 const styles = StyleSheet.create({
+    header: {
+        flexDirection: 'row',
+        justifyContent: 'space-between',
+        alignItems: 'center',
+        paddingVertical: theme.spacing.md,
+        paddingHorizontal: theme.spacing.lg,
+        backgroundColor: theme.colors.background.elevated,
+        borderBottomWidth: 1,
+        borderBottomColor: theme.colors.border,
+    },
+    title: {
+        ...theme.typography.h2,
+        color: theme.colors.text.primary,
+    },
+    headerButtons: {
+        flexDirection: 'row',
+        alignItems: 'center',
+    },
+    logoutButton: {
+        padding: theme.spacing.sm,
+        marginRight: theme.spacing.md,
+    },
     listContainer: {
         flexGrow: 1,
         paddingBottom: theme.spacing.xl * 2,

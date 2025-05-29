@@ -4,8 +4,11 @@ import { NavigationContainer, DefaultTheme } from '@react-navigation/native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { StatusBar } from 'expo-status-bar';
 import { theme } from './theme';
+import { AuthProvider, useAuth } from './context/AuthContext';
 
 import HomeScreen from './screens/HomeScreen';
+import LoginScreen from './screens/LoginScreen';
+import RegisterScreen from './screens/RegisterScreen';
 import DeckScreen from './screens/DeckScreen';
 import StudyScreen from './screens/StudyScreen';
 import AddEditDeckScreen from './screens/AddEditDeckScreen';
@@ -41,35 +44,54 @@ const screenOptions = {
     },
 };
 
+function Navigation() {
+    const { isAuthenticated } = useAuth();
+
+    return (
+        <Stack.Navigator screenOptions={screenOptions}>
+            {!isAuthenticated ? (
+                <>
+                    <Stack.Screen name="Login" component={LoginScreen} options={{ headerShown: false }} />
+                    <Stack.Screen name="Register" component={RegisterScreen} options={{ headerShown: false }} />
+                </>
+            ) : (
+                <>
+                    <Stack.Screen name="Home" component={HomeScreen} options={{ title: 'Mis Mazos' }} />
+                    <Stack.Screen
+                        name="Deck"
+                        component={DeckScreen}
+                        options={({ route }) => ({ title: route.params.deckName })}
+                    />
+                    <Stack.Screen name="Study" component={StudyScreen} options={{ title: 'Estudiar' }} />
+                    <Stack.Screen
+                        name="AddEditDeck"
+                        component={AddEditDeckScreen}
+                        options={({ route }) => ({
+                            title: route.params?.deck ? 'Editar Mazo' : 'Nuevo Mazo',
+                        })}
+                    />
+                    <Stack.Screen
+                        name="AddEditCard"
+                        component={AddEditCardScreen}
+                        options={({ route }) => ({
+                            title: route.params?.card ? 'Editar Tarjeta' : 'Nueva Tarjeta',
+                        })}
+                    />
+                    <Stack.Screen name="Search" component={SearchScreen} options={{ title: 'Buscar' }} />
+                    <Stack.Screen name="Stats" component={StatsScreen} options={{ title: 'Estadísticas' }} />
+                </>
+            )}
+        </Stack.Navigator>
+    );
+}
+
 export default function App() {
     return (
-        <NavigationContainer theme={NavigationDarkTheme}>
-            <StatusBar style="light" />
-            <Stack.Navigator initialRouteName="Home" screenOptions={screenOptions}>
-                <Stack.Screen name="Home" component={HomeScreen} options={{ title: 'Mis Mazos' }} />
-                <Stack.Screen
-                    name="Deck"
-                    component={DeckScreen}
-                    options={({ route }) => ({ title: route.params.deckName })}
-                />
-                <Stack.Screen name="Study" component={StudyScreen} options={{ title: 'Estudiar' }} />
-                <Stack.Screen
-                    name="AddEditDeck"
-                    component={AddEditDeckScreen}
-                    options={({ route }) => ({
-                        title: route.params?.deck ? 'Editar Mazo' : 'Nuevo Mazo',
-                    })}
-                />
-                <Stack.Screen
-                    name="AddEditCard"
-                    component={AddEditCardScreen}
-                    options={({ route }) => ({
-                        title: route.params?.card ? 'Editar Tarjeta' : 'Nueva Tarjeta',
-                    })}
-                />
-                <Stack.Screen name="Search" component={SearchScreen} options={{ title: 'Buscar' }} />
-                <Stack.Screen name="Stats" component={StatsScreen} options={{ title: 'Estadísticas' }} />
-            </Stack.Navigator>
-        </NavigationContainer>
+        <AuthProvider>
+            <NavigationContainer theme={NavigationDarkTheme}>
+                <StatusBar style="light" />
+                <Navigation />
+            </NavigationContainer>
+        </AuthProvider>
     );
 }

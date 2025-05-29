@@ -1,6 +1,9 @@
 const express = require('express');
 const cors = require('cors');
+const bcrypt = require('bcryptjs');
+const jwt = require('jsonwebtoken');
 const db = require('./database');
+const auth = require('./middleware/auth');
 require('dotenv').config();
 
 const app = express();
@@ -9,6 +12,91 @@ const port = process.env.PORT || 8000;
 // Middleware
 app.use(cors());
 app.use(express.json());
+
+// Rutas de autenticación
+app.post('/auth/register', async (req, res) => {
+    try {
+        const { username, email, password } = req.body;
+
+        // Validar campos requeridos
+        if (!username || !email || !password) {
+            return res.status(400).json({ error: 'Todos los campos son requeridos' });
+        }
+
+        // Hash de la contraseña
+        const salt = await bcrypt.genSalt(10);
+        const hashedPassword = await bcrypt.hash(password, salt);
+
+        // Crear usuario
+        const userId = await db.createUser(username, email, hashedPassword);
+
+        // Generar token JWT
+        const token = jwt.sign({ id: userId }, process.env.JWT_SECRET, { expiresIn: '24h' });
+
+        res.json({
+            token,
+            user: {
+                id: userId,
+                username,
+                email,
+            },
+        });
+    } catch (error) {
+        console.error('Error en el registro:', error);
+        res.status(500).json({ error: error.message });
+    }
+});
+
+app.post('/auth/login', async (req, res) => {
+    try {
+        const { email, password } = req.body;
+
+        // Validar campos requeridos
+        if (!email || !password) {
+            return res.status(400).json({ error: 'Todos los campos son requeridos' });
+        }
+
+        // Buscar usuario
+        const user = await db.getUserByEmail(email);
+        if (!user) {
+            return res.status(400).json({ error: 'Credenciales inválidas' });
+        }
+
+        // Verificar contraseña
+        const isMatch = await bcrypt.compare(password, user.password);
+        if (!isMatch) {
+            return res.status(400).json({ error: 'Credenciales inválidas' });
+        }
+
+        // Generar token JWT
+        const token = jwt.sign({ id: user.id }, process.env.JWT_SECRET, { expiresIn: '24h' });
+
+        res.json({
+            token,
+            user: {
+                id: user.id,
+                username: user.username,
+                email: user.email,
+            },
+        });
+    } catch (error) {
+        console.error('Error en el login:', error);
+        res.status(500).json({ error: 'Error en el servidor' });
+    }
+});
+
+app.get('/auth/user', auth, async (req, res) => {
+    try {
+        const user = await db.getUserById(req.user.id);
+        if (!user) {
+            return res.status(404).json({ error: 'Usuario no encontrado' });
+        }
+        res.json(user);
+    } catch (error) {
+        console.error('Error al obtener usuario:', error);
+        res.status(500).json({ error: 'Error en el servidor' });
+    }
+});
 
 // Funciones de utilidad
 function calculateSM2(quality, repetitions, easeFactor, interval) {
@@ -43,9 +131,9 @@ function calculateSM2(quality, repetitions, easeFactor, interval) {
 }
 
 // Rutas para mazos
-app.get('/decks', async (req, res) => {
+app.get('/decks', auth, async (req, res) => {
     try {
-        const decks = await db.getAllDecks();
+        const decks = await db.getAllDecks(req.user.id);
         res.json(decks);
     } catch (error) {
         console.error('Error al obtener mazos:', error);
@@ -53,14 +141,14 @@ app.get('/decks', async (req, res) => {
     }
 });
 
-app.post('/decks', async (req, res) => {
+app.post('/decks', auth, async (req, res) => {
     try {
         const { name, description } = req.body;
         if (!name) {
             return res.status(400).json({ error: 'Se requiere un nombre para el mazo' });
         }
 
-        const deckId = await db.createDeck(name, description || '');
+        const deckId = await db.createDeck(name, description || '', req.user.id);
         res.status(201).json({ id: deckId, name });
     } catch (error) {
         console.error('Error al crear mazo:', error);
@@ -68,14 +156,14 @@ app.post('/decks', async (req, res) => {
     }
 });
 
-app.get('/decks/:id', async (req, res) => {
+app.get('/decks/:id', auth, async (req, res) => {
     try {
-        const deck = await db.getDeck(parseInt(req.params.id));
+        const deck = await db.getDeck(parseInt(req.params.id), req.user.id);
         if (!deck) {
             return res.status(404).json({ error: 'Mazo no encontrado' });
         }
 
-        const cards = await db.getCardsByDeck(deck.id);
+        const cards = await db.getCardsByDeck(deck.id, req.user.id);
         deck.cards = cards.map((card) => ({
             ...card,
             tags: JSON.parse(card.tags),
@@ -88,10 +176,10 @@ app.get('/decks/:id', async (req, res) => {
     }
 });
 
-app.put('/decks/:id', async (req, res) => {
+app.put('/decks/:id', auth, async (req, res) => {
     try {
         const { name, description } = req.body;
-        const success = await db.updateDeck(parseInt(req.params.id), name, description);
+        const success = await db.updateDeck(name, description, parseInt(req.params.id), req.user.id);
 
         if (!success) {
             return res.status(404).json({ error: 'Mazo no encontrado' });
@@ -104,9 +192,9 @@ app.put('/decks/:id', async (req, res) => {
     }
 });
 
-app.delete('/decks/:id', async (req, res) => {
+app.delete('/decks/:id', auth, async (req, res) => {
     try {
-        const success = await db.deleteDeck(parseInt(req.params.id));
+        const success = await db.deleteDeck(parseInt(req.params.id), req.user.id);
 
         if (!success) {
             return res.status(404).json({ error: 'Mazo no encontrado' });
@@ -120,14 +208,14 @@ app.delete('/decks/:id', async (req, res) => {
 });
 
 // Rutas para tarjetas
-app.post('/decks/:deckId/cards', async (req, res) => {
+app.post('/decks/:deckId/cards', auth, async (req, res) => {
     try {
         const { front, back, tags } = req.body;
         if (!front || !back) {
             return res.status(400).json({ error: 'Se requiere frente y reverso para la tarjeta' });
         }
 
-        const cardId = await db.createCard(parseInt(req.params.deckId), front, back, tags || []);
+        const cardId = await db.createCard(parseInt(req.params.deckId), front, back, tags || [], req.user.id);
         if (!cardId) {
             return res.status(404).json({ error: 'Mazo no encontrado' });
         }
@@ -139,9 +227,9 @@ app.post('/decks/:deckId/cards', async (req, res) => {
     }
 });
 
-app.get('/cards/:id', async (req, res) => {
+app.get('/cards/:id', auth, async (req, res) => {
     try {
-        const card = await db.getCard(parseInt(req.params.id));
+        const card = await db.getCard(parseInt(req.params.id), req.user.id);
         if (!card) {
             return res.status(404).json({ error: 'Tarjeta no encontrada' });
         }
@@ -154,10 +242,10 @@ app.get('/cards/:id', async (req, res) => {
     }
 });
 
-app.put('/cards/:id', async (req, res) => {
+app.put('/cards/:id', auth, async (req, res) => {
     try {
         const { front, back, tags } = req.body;
-        const success = await db.updateCard(parseInt(req.params.id), front, back, tags);
+        const success = await db.updateCard(parseInt(req.params.id), front, back, tags, req.user.id);
 
         if (!success) {
             return res.status(404).json({ error: 'Tarjeta no encontrada' });
@@ -170,9 +258,9 @@ app.put('/cards/:id', async (req, res) => {
     }
 });
 
-app.delete('/cards/:id', async (req, res) => {
+app.delete('/cards/:id', auth, async (req, res) => {
     try {
-        const success = await db.deleteCard(parseInt(req.params.id));
+        const success = await db.deleteCard(parseInt(req.params.id), req.user.id);
 
         if (!success) {
             return res.status(404).json({ error: 'Tarjeta no encontrada' });
@@ -236,10 +324,10 @@ app.post('/cards/:id/review', async (req, res) => {
 });
 
 // Rutas para búsqueda y etiquetas
-app.get('/search', async (req, res) => {
+app.get('/search', auth, async (req, res) => {
     try {
         const { q, tag } = req.query;
-        const cards = await db.searchCards(q || '', tag || '');
+        const cards = await db.searchCards(q || '', tag || '', req.user.id);
         res.json(
             cards.map((card) => ({
                 ...card,
@@ -252,9 +340,9 @@ app.get('/search', async (req, res) => {
     }
 });
 
-app.get('/tags', async (req, res) => {
+app.get('/tags', auth, async (req, res) => {
     try {
-        const tags = await db.getAllTags();
+        const tags = await db.getAllTags(req.user.id);
         res.json(tags);
     } catch (error) {
         console.error('Error al obtener etiquetas:', error);
@@ -263,9 +351,9 @@ app.get('/tags', async (req, res) => {
 });
 
 // Ruta para estadísticas
-app.get('/stats', async (req, res) => {
+app.get('/stats', auth, async (req, res) => {
     try {
-        const stats = await db.getStudyStats();
+        const stats = await db.getStudyStats(req.user.id);
         res.json(stats);
     } catch (error) {
         console.error('Error al obtener estadísticas:', error);

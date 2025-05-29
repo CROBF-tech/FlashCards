@@ -11,8 +11,7 @@ import {
     Dimensions,
 } from 'react-native';
 import { AntDesign } from '@expo/vector-icons';
-import axios from 'axios';
-import { API_URL } from '../config';
+import api from '../utils/api';
 import { theme, styles as globalStyles } from '../theme';
 
 export default function SearchScreen({ navigation }) {
@@ -29,7 +28,7 @@ export default function SearchScreen({ navigation }) {
 
     const fetchTags = async () => {
         try {
-            const response = await axios.get(`${API_URL}/tags`);
+            const response = await api.get('/tags');
             setAllTags(response.data);
         } catch (err) {
             console.error('Error al obtener etiquetas:', err);
@@ -47,7 +46,7 @@ export default function SearchScreen({ navigation }) {
             if (query.trim()) params.append('q', query.trim());
             if (tag.trim()) params.append('tag', tag.trim());
 
-            const response = await axios.get(`${API_URL}/search?${params.toString()}`);
+            const response = await api.get(`/search?${params.toString()}`);
             setResults(response.data);
         } catch (err) {
             console.error('Error en la búsqueda:', err);

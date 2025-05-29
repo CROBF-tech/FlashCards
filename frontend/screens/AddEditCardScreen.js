@@ -13,8 +13,7 @@ import {
     ActivityIndicator,
 } from 'react-native';
 import { AntDesign } from '@expo/vector-icons';
-import axios from 'axios';
-import { API_URL } from '../config';
+import api from '../utils/api';
 import { theme, styles as globalStyles } from '../theme';
 
 export default function AddEditCardScreen({ route, navigation }) {
@@ -48,13 +47,13 @@ export default function AddEditCardScreen({ route, navigation }) {
         setIsSubmitting(true);
         try {
             if (card) {
-                await axios.put(`${API_URL}/cards/${card.id}`, {
+                await api.put(`/cards/${card.id}`, {
                     front,
                     back,
                     tags: tagsArray,
                 });
             } else {
-                await axios.post(`${API_URL}/decks/${deckId}/cards`, {
+                await api.post(`/decks/${deckId}/cards`, {
                     front,
                     back,
                     tags: tagsArray,

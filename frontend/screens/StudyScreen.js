@@ -11,8 +11,7 @@ import {
     Dimensions,
 } from 'react-native';
 import { AntDesign } from '@expo/vector-icons';
-import axios from 'axios';
-import { API_URL } from '../config';
+import api from '../utils/api';
 import { theme, styles as globalStyles } from '../theme';
 
 export default function StudyScreen({ route, navigation }) {
@@ -32,7 +31,7 @@ export default function StudyScreen({ route, navigation }) {
     const fetchDueCards = async () => {
         setLoading(true);
         try {
-            const response = await axios.get(`${API_URL}/decks/${deckId}/study`);
+            const response = await api.get(`/decks/${deckId}/study`);
             setCards(response.data);
             setCurrentCardIndex(0);
             setShowAnswer(false);
@@ -62,7 +61,7 @@ export default function StudyScreen({ route, navigation }) {
         const currentCard = cards[currentCardIndex];
 
         try {
-            await axios.post(`${API_URL}/cards/${currentCard.id}/review`, { quality });
+            await api.post(`/cards/${currentCard.id}/review`, { quality });
 
             if (currentCardIndex < cards.length - 1) {
                 setCurrentCardIndex(currentCardIndex + 1);

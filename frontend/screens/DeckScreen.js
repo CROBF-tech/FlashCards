@@ -2,8 +2,7 @@
 import React, { useState, useEffect } from 'react';
 import { View, Text, FlatList, TouchableOpacity, Alert, ActivityIndicator, StyleSheet, Animated } from 'react-native';
 import { AntDesign } from '@expo/vector-icons';
-import axios from 'axios';
-import { API_URL } from '../config';
+import api from '../utils/api';
 import { theme, styles as globalStyles } from '../theme';
 
 export default function DeckScreen({ route, navigation }) {
@@ -28,7 +27,7 @@ export default function DeckScreen({ route, navigation }) {
     const fetchDeckDetails = async () => {
         setLoading(true);
         try {
-            const response = await axios.get(`${API_URL}/decks/${deckId}`);
+            const response = await api.get(`/decks/${deckId}`);
             setDeck(response.data);
             setCards(response.data.cards || []);
             setError(null);
@@ -55,7 +54,7 @@ export default function DeckScreen({ route, navigation }) {
                     style: 'destructive',
                     onPress: async () => {
                         try {
-                            await axios.delete(`${API_URL}/decks/${deckId}`);
+                            await api.delete(`/decks/${deckId}`);
                             navigation.goBack();
                         } catch (err) {
                             Alert.alert('Error', 'No se pudo eliminar el mazo.');
@@ -77,7 +76,7 @@ export default function DeckScreen({ route, navigation }) {
                 style: 'destructive',
                 onPress: async () => {
                     try {
-                        await axios.delete(`${API_URL}/cards/${cardId}`);
+                        await api.delete(`/cards/${cardId}`);
                         fetchDeckDetails();
                     } catch (err) {
                         Alert.alert('Error', 'No se pudo eliminar la tarjeta.');
