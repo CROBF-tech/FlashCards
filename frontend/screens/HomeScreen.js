@@ -84,14 +84,6 @@ export default function HomeScreen({ navigation }) {
 
     return (
         <View style={globalStyles.container}>
-            <View style={styles.header}>
-                <Text style={styles.title}>Mis Mazos</Text>
-                <View style={styles.headerButtons}>
-                    <TouchableOpacity onPress={handleLogout} style={styles.logoutButton}>
-                        <AntDesign name="logout" size={24} color={theme.colors.text.primary} />
-                    </TouchableOpacity>
-                </View>
-            </View>
             <FlatList
                 data={decks}
                 renderItem={renderDeckItem}
@@ -133,28 +125,6 @@ export default function HomeScreen({ navigation }) {
 }
 
 const styles = StyleSheet.create({
-    header: {
-        flexDirection: 'row',
-        justifyContent: 'space-between',
-        alignItems: 'center',
-        paddingVertical: theme.spacing.md,
-        paddingHorizontal: theme.spacing.lg,
-        backgroundColor: theme.colors.background.elevated,
-        borderBottomWidth: 1,
-        borderBottomColor: theme.colors.border,
-    },
-    title: {
-        ...theme.typography.h2,
-        color: theme.colors.text.primary,
-    },
-    headerButtons: {
-        flexDirection: 'row',
-        alignItems: 'center',
-    },
-    logoutButton: {
-        padding: theme.spacing.sm,
-        marginRight: theme.spacing.md,
-    },
     listContainer: {
         flexGrow: 1,
         paddingBottom: theme.spacing.xl * 2,

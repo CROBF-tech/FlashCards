@@ -9,6 +9,7 @@ export const AuthContext = createContext({
     login: async () => {},
     register: async () => {},
     logout: async () => {},
+    signOut: async () => {},
 });
 
 export const AuthProvider = ({ children }) => {
@@ -64,12 +65,34 @@ export const AuthProvider = ({ children }) => {
         setIsAuthenticated(false);
     };
 
+    const signOut = async () => {
+        try {
+            await AsyncStorage.removeItem(CONFIG.tokenStorageKey);
+            setUser(null);
+            setIsAuthenticated(false);
+            // Limpiar el header de autorización en las peticiones API
+            delete api.defaults.headers.common['Authorization'];
+        } catch (error) {
+            console.error('Error al cerrar sesión:', error);
+            throw error;
+        }
+    };
+
     if (loading) {
         return null; // O un componente de carga
     }
 
     return (
-        <AuthContext.Provider value={{ isAuthenticated, user, login, register, logout }}>
+        <AuthContext.Provider
+            value={{
+                isAuthenticated,
+                user,
+                loading,
+                login,
+                register,
+                signOut,
+            }}
+        >
             {children}
         </AuthContext.Provider>
     );

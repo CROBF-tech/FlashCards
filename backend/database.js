@@ -361,6 +361,16 @@ class FlashcardsDB {
             avg_quality: Math.round(avgQuality * 100) / 100,
         };
     }
+
+    async deleteUser(userId) {
+        try {
+            const result = await this.client.execute({ sql: `DELETE FROM users WHERE id = ?`, args: [userId] });
+            return result.rowsAffected > 0;
+        } catch (error) {
+            console.error('Error al eliminar usuario:', error);
+            throw error;
+        }
+    }
 }
 
 module.exports = new FlashcardsDB();

@@ -3,6 +3,8 @@ import React from 'react';
 import { NavigationContainer, DefaultTheme } from '@react-navigation/native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { StatusBar } from 'expo-status-bar';
+import { TouchableOpacity } from 'react-native';
+import { AntDesign } from '@expo/vector-icons';
 import { theme } from './theme';
 import { AuthProvider, useAuth } from './context/AuthContext';
 
@@ -15,6 +17,7 @@ import AddEditDeckScreen from './screens/AddEditDeckScreen';
 import AddEditCardScreen from './screens/AddEditCardScreen';
 import SearchScreen from './screens/SearchScreen';
 import StatsScreen from './screens/StatsScreen';
+import SettingsScreen from './screens/SettingsScreen';
 
 const Stack = createNativeStackNavigator();
 
@@ -56,7 +59,24 @@ function Navigation() {
                 </>
             ) : (
                 <>
-                    <Stack.Screen name="Home" component={HomeScreen} options={{ title: 'Mis Mazos' }} />
+                    <Stack.Screen
+                        name="Home"
+                        component={HomeScreen}
+                        options={({ navigation }) => ({
+                            title: 'FlashCards',
+                            headerRight: () => (
+                                <TouchableOpacity
+                                    onPress={() => navigation.navigate('Settings')}
+                                    style={{
+                                        padding: 10,
+                                        marginRight: -10,
+                                    }}
+                                >
+                                    <AntDesign name="setting" size={24} color={theme.colors.text.primary} />
+                                </TouchableOpacity>
+                            ),
+                        })}
+                    />
                     <Stack.Screen
                         name="Deck"
                         component={DeckScreen}
@@ -79,6 +99,7 @@ function Navigation() {
                     />
                     <Stack.Screen name="Search" component={SearchScreen} options={{ title: 'Buscar' }} />
                     <Stack.Screen name="Stats" component={StatsScreen} options={{ title: 'Estadísticas' }} />
+                    <Stack.Screen name="Settings" component={SettingsScreen} options={{ title: 'Configuración' }} />
                 </>
             )}
         </Stack.Navigator>
