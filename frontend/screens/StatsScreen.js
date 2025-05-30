@@ -10,9 +10,60 @@ import {
     RefreshControl,
     Dimensions,
 } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { AntDesign } from '@expo/vector-icons';
 import api from '../utils/api';
 import { theme, styles as globalStyles } from '../theme';
+
+const DailyProgressChart = ({ data }) => {
+    const maxCount = Math.max(...(data?.map((d) => d.count) || [0]));
+    const days = ['Dom', 'Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb'];
+    const today = new Date();
+    const lastWeek = Array(7)
+        .fill(0)
+        .map((_, i) => {
+            const date = new Date(today);
+            date.setDate(date.getDate() - (6 - i));
+            return date.toISOString().split('T')[0];
+        });
+
+    const dailyData = lastWeek.map((date) => {
+        const dayData = data?.find((d) => d.date === date);
+        return {
+            date,
+            count: dayData?.count || 0,
+            day: days[new Date(date).getDay()],
+        };
+    });
+
+    return (
+        <View style={styles.chartCard}>
+            <View style={styles.chartHeader}>
+                <AntDesign name="linechart" size={24} color={theme.colors.primary} />
+                <Text style={styles.chartTitle}>Progreso Diario</Text>
+            </View>
+            <View style={styles.chart}>
+                {dailyData.map((day, index) => (
+                    <View key={day.date} style={styles.chartColumn}>
+                        <View style={styles.chartBarContainer}>
+                            <View
+                                style={[
+                                    styles.chartBar,
+                                    {
+                                        height: `${(day.count / maxCount) * 100}%`,
+                                        backgroundColor: theme.colors.primary,
+                                    },
+                                ]}
+                            />
+                        </View>
+                        <Text style={styles.chartLabel}>{day.day}</Text>
+                        <Text style={styles.chartValue}>{day.count}</Text>
+                    </View>
+                ))}
+            </View>
+        </View>
+    );
+};
 
 export default function StatsScreen() {
     const [stats, setStats] = useState(null);
@@ -27,7 +78,7 @@ export default function StatsScreen() {
     const fetchStats = async () => {
         setLoading(true);
         try {
-            const response = await api.get('/stats');
+            const response = await api.get('/user/stats');
             setStats(response.data);
             setError(null);
         } catch (err) {
@@ -70,71 +121,120 @@ export default function StatsScreen() {
     }
 
     return (
-        <ScrollView
-            style={globalStyles.container}
-            contentContainerStyle={styles.scrollContent}
-            refreshControl={
-                <RefreshControl
-                    refreshing={refreshing}
-                    onRefresh={fetchStats}
-                    colors={[theme.colors.primary]}
-                    tintColor={theme.colors.primary}
-                    progressBackgroundColor={theme.colors.background.card}
-                />
-            }
-        >
-            <View style={styles.header}>
-                <Text style={styles.headerTitle}>Resumen de Actividad</Text>
-                <Text style={styles.headerSubtitle}>Estadísticas generales de tu progreso</Text>
-            </View>
-
-            <View style={styles.statsContainer}>
-                <View style={styles.statsRow}>
-                    <StatCard
-                        title="Total de Mazos"
-                        value={stats?.total_decks || 0}
-                        icon="folder1"
-                        color={theme.colors.primary}
+        <SafeAreaView style={{ flex: 1, backgroundColor: theme.colors.background.dark }} edges={['top', 'bottom']}>
+            <ScrollView
+                style={globalStyles.container}
+                contentContainerStyle={styles.scrollContent}
+                refreshControl={
+                    <RefreshControl
+                        refreshing={refreshing}
+                        onRefresh={fetchStats}
+                        colors={[theme.colors.primary]}
+                        tintColor={theme.colors.primary}
+                        progressBackgroundColor={theme.colors.background.card}
                     />
-                    <StatCard
-                        title="Total de Tarjetas"
-                        value={stats?.total_cards || 0}
-                        icon="creditcard"
-                        color={theme.colors.secondary}
-                    />
+                }
+            >
+                <View style={styles.header}>
+                    <Text style={styles.headerTitle}>Resumen de Actividad</Text>
+                    <Text style={styles.headerSubtitle}>Estadísticas generales de tu progreso</Text>
                 </View>
 
-                <StatCard
-                    title="Tarjetas para Hoy"
-                    value={stats?.due_today || 0}
-                    icon="calendar"
-                    color={theme.colors.warning}
-                    subtitle="Pendientes de repaso"
-                />
-
-                <StatCard
-                    title="Revisiones esta Semana"
-                    value={stats?.reviews_last_week || 0}
-                    icon="barschart"
-                    color={theme.colors.success}
-                    subtitle="Últimos 7 días"
-                />
-
-                <View style={styles.qualityCard}>
-                    <View style={styles.qualityHeader}>
-                        <AntDesign name="star" size={24} color={theme.colors.warning} />
-                        <Text style={styles.qualityTitle}>Calidad Promedio de Respuestas</Text>
+                <View style={styles.statsContainer}>
+                    <View style={styles.statsRow}>
+                        <StatCard
+                            title="Total de Mazos"
+                            value={stats?.total_decks || 0}
+                            icon="folder1"
+                            color={theme.colors.primary}
+                        />
+                        <StatCard
+                            title="Total de Tarjetas"
+                            value={stats?.total_cards || 0}
+                            icon="creditcard"
+                            color={theme.colors.secondary}
+                        />
                     </View>
-                    <View style={styles.qualityMeter}>
-                        <View style={[styles.qualityFill, { width: `${(stats?.avg_quality / 5) * 100}%` }]} />
+
+                    <View style={styles.statsRow}>
+                        <StatCard
+                            title="Tarjetas para Hoy"
+                            value={stats?.due_today || 0}
+                            icon="calendar"
+                            color={theme.colors.warning}
+                            subtitle="Pendientes de repaso"
+                        />
+                        <StatCard
+                            title="Repasos Hoy"
+                            value={stats?.today?.reviews || 0}
+                            icon="checkcircleo"
+                            color={theme.colors.success}
+                            subtitle={`Calidad: ${stats?.today?.avg_quality || 0}/5`}
+                        />
                     </View>
-                    <View style={styles.qualityLabels}>
-                        <Text style={styles.qualityValue}>{stats?.avg_quality || 0}/5</Text>
-                        <Text style={styles.qualityScale}>0 - Olvidado | 5 - Perfecto</Text>
+
+                    <View style={styles.statsRow}>
+                        <StatCard
+                            title="Revisiones Totales"
+                            value={stats?.total_reviews || 0}
+                            icon="barschart"
+                            color={theme.colors.info}
+                            subtitle={`${stats?.study_days || 0} días de estudio`}
+                        />
+                        <StatCard
+                            title="Tasa de Dominio"
+                            value={`${Math.round(stats?.mastery_rate || 0)}%`}
+                            icon="staro"
+                            color={theme.colors.warning}
+                            subtitle="Respuestas correctas"
+                        />
+                    </View>
+
+                    <DailyProgressChart data={stats?.daily_reviews} />
+
+                    <View style={styles.qualityCard}>
+                        <View style={styles.qualityHeader}>
+                            <AntDesign name="star" size={24} color={theme.colors.warning} />
+                            <Text style={styles.qualityTitle}>Calidad Promedio de Respuestas</Text>
+                        </View>
+                        <View style={styles.qualityMeter}>
+                            <View style={[styles.qualityFill, { width: `${(stats?.avg_quality / 5) * 100}%` }]} />
+                        </View>
+                        <View style={styles.qualityLabels}>
+                            <Text style={styles.qualityValue}>{stats?.avg_quality || 0}/5</Text>
+                            <Text style={styles.qualityScale}>0 - Olvidado | 5 - Perfecto</Text>
+                        </View>
+
+                        <View style={styles.qualityDistribution}>
+                            {stats?.quality_distribution?.map((item) => (
+                                <View key={item.quality} style={styles.qualityBar}>
+                                    <Text style={styles.qualityBarLabel}>{item.quality}</Text>
+                                    <View style={styles.qualityBarContainer}>
+                                        <View
+                                            style={[
+                                                styles.qualityBarFill,
+                                                {
+                                                    width: `${
+                                                        (item.count /
+                                                            Math.max(
+                                                                ...stats.quality_distribution.map((d) => d.count)
+                                                            )) *
+                                                        100
+                                                    }%`,
+                                                },
+                                            ]}
+                                        />
+                                    </View>
+                                    <Text style={styles.qualityBarValue}>{item.count}</Text>
+                                </View>
+                            ))}
+                        </View>
                     </View>
                 </View>
-            </View>
-        </ScrollView>
+
+                <DailyProgressChart data={stats?.daily_progress} />
+            </ScrollView>
+        </SafeAreaView>
     );
 }
 
@@ -234,6 +334,41 @@ const styles = StyleSheet.create({
         color: theme.colors.text.disabled,
         fontSize: 12,
     },
+    qualityDistribution: {
+        marginTop: theme.spacing.lg,
+        paddingTop: theme.spacing.md,
+        borderTopWidth: 1,
+        borderTopColor: theme.colors.background.elevated,
+    },
+    qualityBar: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        marginVertical: 4,
+    },
+    qualityBarLabel: {
+        color: theme.colors.text.secondary,
+        width: 20,
+        fontSize: 12,
+        textAlign: 'center',
+    },
+    qualityBarContainer: {
+        flex: 1,
+        height: 8,
+        backgroundColor: theme.colors.background.elevated,
+        borderRadius: 4,
+        marginHorizontal: theme.spacing.sm,
+    },
+    qualityBarFill: {
+        height: '100%',
+        backgroundColor: theme.colors.warning,
+        borderRadius: 4,
+    },
+    qualityBarValue: {
+        color: theme.colors.text.disabled,
+        width: 30,
+        fontSize: 12,
+        textAlign: 'right',
+    },
     errorText: {
         color: theme.colors.danger,
         marginBottom: theme.spacing.md,
@@ -241,5 +376,52 @@ const styles = StyleSheet.create({
     },
     retryButton: {
         minWidth: 150,
+    },
+    chartCard: {
+        backgroundColor: theme.colors.background.card,
+        borderRadius: theme.borderRadius.lg,
+        padding: theme.spacing.lg,
+        marginVertical: theme.spacing.md,
+    },
+    chartHeader: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        marginBottom: theme.spacing.lg,
+    },
+    chartTitle: {
+        color: theme.colors.text.secondary,
+        marginLeft: theme.spacing.sm,
+        fontSize: 14,
+    },
+    chart: {
+        flexDirection: 'row',
+        height: 150,
+        justifyContent: 'space-between',
+        alignItems: 'flex-end',
+        paddingVertical: theme.spacing.sm,
+    },
+    chartColumn: {
+        flex: 1,
+        alignItems: 'center',
+    },
+    chartBarContainer: {
+        width: 20,
+        height: '100%',
+        justifyContent: 'flex-end',
+    },
+    chartBar: {
+        width: '100%',
+        borderRadius: theme.borderRadius.sm,
+        minHeight: 4,
+    },
+    chartLabel: {
+        color: theme.colors.text.disabled,
+        fontSize: 12,
+        marginTop: theme.spacing.xs,
+    },
+    chartValue: {
+        color: theme.colors.text.secondary,
+        fontSize: 10,
+        marginTop: 2,
     },
 });

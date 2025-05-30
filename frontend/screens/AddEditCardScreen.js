@@ -12,6 +12,7 @@ import {
     StyleSheet,
     ActivityIndicator,
 } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { AntDesign } from '@expo/vector-icons';
 import api from '../utils/api';
 import { theme, styles as globalStyles } from '../theme';
@@ -69,90 +70,95 @@ export default function AddEditCardScreen({ route, navigation }) {
     };
 
     return (
-        <KeyboardAvoidingView style={globalStyles.container} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
-            <ScrollView contentContainerStyle={styles.scrollContent} keyboardShouldPersistTaps="handled">
-                <View style={styles.previewCard}>
-                    <Text style={styles.previewTitle}>Vista Previa</Text>
-                    <View style={styles.cardPreview}>
-                        <Text style={styles.previewText}>{front || 'Frente de la tarjeta...'}</Text>
-                    </View>
-                    <View style={[styles.cardPreview, styles.cardPreviewBack]}>
-                        <Text style={styles.previewText}>{back || 'Reverso de la tarjeta...'}</Text>
-                    </View>
-                </View>
-
-                <View style={styles.form}>
-                    <View style={styles.inputGroup}>
-                        <Text style={styles.label}>Frente</Text>
-                        <TextInput
-                            style={[styles.input, styles.textArea]}
-                            value={front}
-                            onChangeText={(text) => {
-                                setFront(text);
-                                setErrors((prev) => ({ ...prev, front: '' }));
-                            }}
-                            placeholder="Ingrese la pregunta o el frente de la tarjeta"
-                            placeholderTextColor={theme.colors.text.disabled}
-                            multiline
-                            numberOfLines={4}
-                            textAlignVertical="top"
-                        />
-                        {errors.front && <Text style={styles.errorText}>{errors.front}</Text>}
+        <SafeAreaView style={{ flex: 1, backgroundColor: theme.colors.background.dark }} edges={['top', 'bottom']}>
+            <KeyboardAvoidingView
+                style={globalStyles.container}
+                behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+            >
+                <ScrollView contentContainerStyle={styles.scrollContent} keyboardShouldPersistTaps="handled">
+                    <View style={styles.previewCard}>
+                        <Text style={styles.previewTitle}>Vista Previa</Text>
+                        <View style={styles.cardPreview}>
+                            <Text style={styles.previewText}>{front || 'Frente de la tarjeta...'}</Text>
+                        </View>
+                        <View style={[styles.cardPreview, styles.cardPreviewBack]}>
+                            <Text style={styles.previewText}>{back || 'Reverso de la tarjeta...'}</Text>
+                        </View>
                     </View>
 
-                    <View style={styles.inputGroup}>
-                        <Text style={styles.label}>Reverso</Text>
-                        <TextInput
-                            style={[styles.input, styles.textArea]}
-                            value={back}
-                            onChangeText={(text) => {
-                                setBack(text);
-                                setErrors((prev) => ({ ...prev, back: '' }));
-                            }}
-                            placeholder="Ingrese la respuesta o el reverso de la tarjeta"
-                            placeholderTextColor={theme.colors.text.disabled}
-                            multiline
-                            numberOfLines={4}
-                            textAlignVertical="top"
-                        />
-                        {errors.back && <Text style={styles.errorText}>{errors.back}</Text>}
-                    </View>
+                    <View style={styles.form}>
+                        <View style={styles.inputGroup}>
+                            <Text style={styles.label}>Frente</Text>
+                            <TextInput
+                                style={[styles.input, styles.textArea]}
+                                value={front}
+                                onChangeText={(text) => {
+                                    setFront(text);
+                                    setErrors((prev) => ({ ...prev, front: '' }));
+                                }}
+                                placeholder="Ingrese la pregunta o el frente de la tarjeta"
+                                placeholderTextColor={theme.colors.text.disabled}
+                                multiline
+                                numberOfLines={4}
+                                textAlignVertical="top"
+                            />
+                            {errors.front && <Text style={styles.errorText}>{errors.front}</Text>}
+                        </View>
 
-                    <View style={styles.inputGroup}>
-                        <Text style={styles.label}>Etiquetas</Text>
-                        <TextInput
-                            style={styles.input}
-                            value={tags}
-                            onChangeText={setTags}
-                            placeholder="ej: matemáticas, álgebra, fórmulas (separadas por comas)"
-                            placeholderTextColor={theme.colors.text.disabled}
-                        />
-                    </View>
+                        <View style={styles.inputGroup}>
+                            <Text style={styles.label}>Reverso</Text>
+                            <TextInput
+                                style={[styles.input, styles.textArea]}
+                                value={back}
+                                onChangeText={(text) => {
+                                    setBack(text);
+                                    setErrors((prev) => ({ ...prev, back: '' }));
+                                }}
+                                placeholder="Ingrese la respuesta o el reverso de la tarjeta"
+                                placeholderTextColor={theme.colors.text.disabled}
+                                multiline
+                                numberOfLines={4}
+                                textAlignVertical="top"
+                            />
+                            {errors.back && <Text style={styles.errorText}>{errors.back}</Text>}
+                        </View>
 
-                    <TouchableOpacity
-                        style={[styles.submitButton, isSubmitting && styles.submitButtonDisabled]}
-                        onPress={handleSubmit}
-                        disabled={isSubmitting}
-                    >
-                        {isSubmitting ? (
-                            <ActivityIndicator color={theme.colors.text.primary} />
-                        ) : (
-                            <>
-                                <AntDesign
-                                    name={card ? 'save' : 'plus'}
-                                    size={20}
-                                    color={theme.colors.text.primary}
-                                    style={styles.submitButtonIcon}
-                                />
-                                <Text style={styles.submitButtonText}>
-                                    {card ? 'Actualizar Tarjeta' : 'Crear Tarjeta'}
-                                </Text>
-                            </>
-                        )}
-                    </TouchableOpacity>
-                </View>
-            </ScrollView>
-        </KeyboardAvoidingView>
+                        <View style={styles.inputGroup}>
+                            <Text style={styles.label}>Etiquetas</Text>
+                            <TextInput
+                                style={styles.input}
+                                value={tags}
+                                onChangeText={setTags}
+                                placeholder="ej: matemáticas, álgebra, fórmulas (separadas por comas)"
+                                placeholderTextColor={theme.colors.text.disabled}
+                            />
+                        </View>
+
+                        <TouchableOpacity
+                            style={[styles.submitButton, isSubmitting && styles.submitButtonDisabled]}
+                            onPress={handleSubmit}
+                            disabled={isSubmitting}
+                        >
+                            {isSubmitting ? (
+                                <ActivityIndicator color={theme.colors.text.primary} />
+                            ) : (
+                                <>
+                                    <AntDesign
+                                        name={card ? 'save' : 'plus'}
+                                        size={20}
+                                        color={theme.colors.text.primary}
+                                        style={styles.submitButtonIcon}
+                                    />
+                                    <Text style={styles.submitButtonText}>
+                                        {card ? 'Actualizar Tarjeta' : 'Crear Tarjeta'}
+                                    </Text>
+                                </>
+                            )}
+                        </TouchableOpacity>
+                    </View>
+                </ScrollView>
+            </KeyboardAvoidingView>
+        </SafeAreaView>
     );
 }
 

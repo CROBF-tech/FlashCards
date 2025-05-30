@@ -1,6 +1,7 @@
 // screens/DeckScreen.js
 import React, { useState, useEffect } from 'react';
 import { View, Text, FlatList, TouchableOpacity, Alert, ActivityIndicator, StyleSheet, Animated } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { AntDesign } from '@expo/vector-icons';
 import api from '../utils/api';
 import { theme, styles as globalStyles } from '../theme';
@@ -123,36 +124,38 @@ export default function DeckScreen({ route, navigation }) {
         };
 
         return (
-            <View style={styles.cardContainer}>
-                <TouchableOpacity activeOpacity={0.9} onPress={flipCard} style={styles.cardTouchable}>
-                    <Animated.View style={[styles.cardSide, frontAnimatedStyle]}>
-                        <Text style={styles.cardText}>{item.front}</Text>
-                        <Text style={styles.tapHint}>Toca para ver respuesta</Text>
-                    </Animated.View>
-                    <Animated.View style={[styles.cardSide, styles.cardBack, backAnimatedStyle]}>
-                        <Text style={styles.cardText}>{item.back}</Text>
-                        <Text style={styles.tapHint}>Toca para ver pregunta</Text>
-                    </Animated.View>
-                </TouchableOpacity>
-
-                <View style={styles.cardActions}>
-                    <TouchableOpacity
-                        onPress={() => navigation.navigate('AddEditCard', { deckId, card: item })}
-                        style={[styles.actionButton, styles.editButton]}
-                    >
-                        <AntDesign name="edit" size={20} color={theme.colors.primary} />
-                        <Text style={styles.editButtonText}>Editar</Text>
+            <SafeAreaView style={{ flex: 1, backgroundColor: theme.colors.background.dark }} edges={['top', 'bottom']}>
+                <View style={styles.cardContainer}>
+                    <TouchableOpacity activeOpacity={0.9} onPress={flipCard} style={styles.cardTouchable}>
+                        <Animated.View style={[styles.cardSide, frontAnimatedStyle]}>
+                            <Text style={styles.cardText}>{item.front}</Text>
+                            <Text style={styles.tapHint}>Toca para ver respuesta</Text>
+                        </Animated.View>
+                        <Animated.View style={[styles.cardSide, styles.cardBack, backAnimatedStyle]}>
+                            <Text style={styles.cardText}>{item.back}</Text>
+                            <Text style={styles.tapHint}>Toca para ver pregunta</Text>
+                        </Animated.View>
                     </TouchableOpacity>
 
-                    <TouchableOpacity
-                        onPress={() => deleteCard(item.id)}
-                        style={[styles.actionButton, styles.deleteButton]}
-                    >
-                        <AntDesign name="delete" size={20} color={theme.colors.danger} />
-                        <Text style={styles.deleteButtonText}>Borrar</Text>
-                    </TouchableOpacity>
+                    <View style={styles.cardActions}>
+                        <TouchableOpacity
+                            onPress={() => navigation.navigate('AddEditCard', { deckId, card: item })}
+                            style={[styles.actionButton, styles.editButton]}
+                        >
+                            <AntDesign name="edit" size={20} color={theme.colors.primary} />
+                            <Text style={styles.editButtonText}>Editar</Text>
+                        </TouchableOpacity>
+
+                        <TouchableOpacity
+                            onPress={() => deleteCard(item.id)}
+                            style={[styles.actionButton, styles.deleteButton]}
+                        >
+                            <AntDesign name="delete" size={20} color={theme.colors.danger} />
+                            <Text style={styles.deleteButtonText}>Borrar</Text>
+                        </TouchableOpacity>
+                    </View>
                 </View>
-            </View>
+            </SafeAreaView>
         );
     };
 
@@ -176,63 +179,65 @@ export default function DeckScreen({ route, navigation }) {
     }
 
     return (
-        <View style={globalStyles.container}>
-            <View style={styles.header}>
-                <View style={styles.headerContent}>
-                    <Text style={styles.deckName}>{deck?.name}</Text>
-                    {deck?.description ? <Text style={styles.deckDescription}>{deck.description}</Text> : null}
-                    <View style={styles.stats}>
-                        <View style={styles.statItem}>
-                            <AntDesign name="creditcard" size={20} color={theme.colors.text.secondary} />
-                            <Text style={styles.statText}>
-                                {cards.length} tarjeta{cards.length !== 1 ? 's' : ''}
-                            </Text>
+        <SafeAreaView style={{ flex: 1, backgroundColor: theme.colors.background.dark }} edges={['top', 'bottom']}>
+            <View style={globalStyles.container}>
+                <View style={styles.header}>
+                    <View style={styles.headerContent}>
+                        <Text style={styles.deckName}>{deck?.name}</Text>
+                        {deck?.description ? <Text style={styles.deckDescription}>{deck.description}</Text> : null}
+                        <View style={styles.stats}>
+                            <View style={styles.statItem}>
+                                <AntDesign name="creditcard" size={20} color={theme.colors.text.secondary} />
+                                <Text style={styles.statText}>
+                                    {cards.length} tarjeta{cards.length !== 1 ? 's' : ''}
+                                </Text>
+                            </View>
                         </View>
                     </View>
                 </View>
+
+                <FlatList
+                    data={cards}
+                    renderItem={({ item }) => <CardItem item={item} />}
+                    keyExtractor={(item) => item.id.toString()}
+                    contentContainerStyle={styles.listContainer}
+                    ListEmptyComponent={
+                        <View style={styles.emptyContainer}>
+                            <AntDesign name="creditcard" size={48} color={theme.colors.text.secondary} />
+                            <Text style={styles.emptyText}>No hay tarjetas en este mazo.{'\n'}Añade una nueva.</Text>
+                        </View>
+                    }
+                />
+
+                <View style={styles.footer}>
+                    <TouchableOpacity
+                        style={[styles.footerButton, styles.studyButton]}
+                        onPress={() => navigation.navigate('Study', { deckId, deckName })}
+                        disabled={cards.length === 0}
+                    >
+                        <AntDesign name="book" size={20} color={theme.colors.text.primary} />
+                    </TouchableOpacity>
+
+                    <TouchableOpacity
+                        style={[styles.footerButton, styles.addButton]}
+                        onPress={() => navigation.navigate('AddEditCard', { deckId })}
+                    >
+                        <AntDesign name="plus" size={20} color={theme.colors.text.primary} />
+                    </TouchableOpacity>
+
+                    <TouchableOpacity
+                        style={[styles.footerButton, styles.editDeckButton]}
+                        onPress={() => navigation.navigate('AddEditDeck', { deck })}
+                    >
+                        <AntDesign name="edit" size={20} color={theme.colors.text.primary} />
+                    </TouchableOpacity>
+
+                    <TouchableOpacity style={[styles.footerButton, styles.deleteButton]} onPress={deleteDeck}>
+                        <AntDesign name="delete" size={20} color={theme.colors.danger} />
+                    </TouchableOpacity>
+                </View>
             </View>
-
-            <FlatList
-                data={cards}
-                renderItem={({ item }) => <CardItem item={item} />}
-                keyExtractor={(item) => item.id.toString()}
-                contentContainerStyle={styles.listContainer}
-                ListEmptyComponent={
-                    <View style={styles.emptyContainer}>
-                        <AntDesign name="creditcard" size={48} color={theme.colors.text.secondary} />
-                        <Text style={styles.emptyText}>No hay tarjetas en este mazo.{'\n'}Añade una nueva.</Text>
-                    </View>
-                }
-            />
-
-            <View style={styles.footer}>
-                <TouchableOpacity
-                    style={[styles.footerButton, styles.studyButton]}
-                    onPress={() => navigation.navigate('Study', { deckId, deckName })}
-                    disabled={cards.length === 0}
-                >
-                    <AntDesign name="book" size={20} color={theme.colors.text.primary} />
-                </TouchableOpacity>
-
-                <TouchableOpacity
-                    style={[styles.footerButton, styles.addButton]}
-                    onPress={() => navigation.navigate('AddEditCard', { deckId })}
-                >
-                    <AntDesign name="plus" size={20} color={theme.colors.text.primary} />
-                </TouchableOpacity>
-
-                <TouchableOpacity
-                    style={[styles.footerButton, styles.editDeckButton]}
-                    onPress={() => navigation.navigate('AddEditDeck', { deck })}
-                >
-                    <AntDesign name="edit" size={20} color={theme.colors.text.primary} />
-                </TouchableOpacity>
-
-                <TouchableOpacity style={[styles.footerButton, styles.deleteButton]} onPress={deleteDeck}>
-                    <AntDesign name="delete" size={20} color={theme.colors.danger} />
-                </TouchableOpacity>
-            </View>
-        </View>
+        </SafeAreaView>
     );
 }
 

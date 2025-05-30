@@ -1,5 +1,6 @@
 import React, { useContext } from 'react';
 import { View, StyleSheet, Alert, TouchableOpacity, Text, ScrollView } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { AntDesign } from '@expo/vector-icons';
 import { AuthContext } from '../context/AuthContext';
 import { theme } from '../theme';
@@ -71,15 +72,17 @@ const SettingsScreen = ({ navigation }) => {
     );
 
     return (
-        <ScrollView style={styles.container}>
-            <View style={styles.section}>
-                <Text style={styles.sectionTitle}>Cuenta</Text>
-                <View style={styles.sectionContent}>
-                    <SettingOption icon="logout" title="Cerrar Sesión" onPress={handleLogout} />
-                    <SettingOption icon="deleteuser" title="Eliminar Cuenta" onPress={handleDeleteAccount} danger />
+        <SafeAreaView style={{ flex: 1, backgroundColor: theme.colors.background.dark }} edges={['top', 'bottom']}>
+            <ScrollView style={styles.container}>
+                <View style={styles.section}>
+                    <Text style={styles.sectionTitle}>Cuenta</Text>
+                    <View style={styles.sectionContent}>
+                        <SettingOption icon="logout" title="Cerrar Sesión" onPress={handleLogout} />
+                        <SettingOption icon="deleteuser" title="Eliminar Cuenta" onPress={handleDeleteAccount} danger />
+                    </View>
                 </View>
-            </View>
-        </ScrollView>
+            </ScrollView>
+        </SafeAreaView>
     );
 };
 

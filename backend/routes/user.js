@@ -4,6 +4,20 @@ import db from '../database.js';
 
 const router = express.Router();
 
+// Ruta para obtener las estadísticas del usuario
+router.get('/stats', auth, async (req, res) => {
+    try {
+        const userId = req.user.id;
+        const stats = await db.getStudyStats(userId);
+        res.json(stats);
+    } catch (error) {
+        console.error('Error al obtener estadísticas:', error);
+        res.status(500).json({
+            message: 'Error al obtener estadísticas. Por favor, intente nuevamente.',
+        });
+    }
+});
+
 router.delete('/delete', auth, async (req, res) => {
     try {
         const userId = req.user.id;

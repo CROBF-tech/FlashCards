@@ -12,6 +12,7 @@ import {
     Platform,
     Alert,
 } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { AntDesign } from '@expo/vector-icons';
 import api from '../utils/api';
 import { theme, styles as globalStyles } from '../theme';
@@ -52,78 +53,83 @@ export default function AddEditDeckScreen({ route, navigation }) {
     };
 
     return (
-        <KeyboardAvoidingView style={globalStyles.container} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
-            <ScrollView contentContainerStyle={styles.scrollContent} keyboardShouldPersistTaps="handled">
-                <View style={styles.formContainer}>
-                    <View style={styles.inputGroup}>
-                        <Text style={styles.label}>Nombre del Mazo</Text>
-                        <View style={styles.inputContainer}>
-                            <AntDesign
-                                name="folder1"
-                                size={20}
-                                color={theme.colors.text.secondary}
-                                style={styles.inputIcon}
-                            />
-                            <TextInput
-                                style={styles.input}
-                                value={name}
-                                onChangeText={(text) => {
-                                    setName(text);
-                                    setError('');
-                                }}
-                                placeholder="Ingrese el nombre del mazo"
-                                placeholderTextColor={theme.colors.text.disabled}
-                            />
-                        </View>
-                        {error ? <Text style={styles.errorText}>{error}</Text> : null}
-                    </View>
-
-                    <View style={styles.inputGroup}>
-                        <Text style={styles.label}>Descripción (opcional)</Text>
-                        <View style={[styles.inputContainer, styles.textAreaContainer]}>
-                            <AntDesign
-                                name="filetext1"
-                                size={20}
-                                color={theme.colors.text.secondary}
-                                style={styles.inputIcon}
-                            />
-                            <TextInput
-                                style={[styles.input, styles.textArea]}
-                                value={description}
-                                onChangeText={setDescription}
-                                placeholder="Ingrese una descripción"
-                                placeholderTextColor={theme.colors.text.disabled}
-                                multiline
-                                numberOfLines={4}
-                                textAlignVertical="top"
-                            />
-                        </View>
-                    </View>
-
-                    <TouchableOpacity
-                        style={[styles.submitButton, isSubmitting && styles.submitButtonDisabled]}
-                        onPress={handleSubmit}
-                        disabled={isSubmitting}
-                    >
-                        {isSubmitting ? (
-                            <ActivityIndicator color={theme.colors.text.primary} />
-                        ) : (
-                            <>
+        <SafeAreaView style={{ flex: 1, backgroundColor: theme.colors.background.dark }} edges={['top', 'bottom']}>
+            <KeyboardAvoidingView
+                style={globalStyles.container}
+                behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+            >
+                <ScrollView contentContainerStyle={styles.scrollContent} keyboardShouldPersistTaps="handled">
+                    <View style={styles.formContainer}>
+                        <View style={styles.inputGroup}>
+                            <Text style={styles.label}>Nombre del Mazo</Text>
+                            <View style={styles.inputContainer}>
                                 <AntDesign
-                                    name={existingDeck ? 'save' : 'plus'}
+                                    name="folder1"
                                     size={20}
-                                    color={theme.colors.text.primary}
-                                    style={styles.submitButtonIcon}
+                                    color={theme.colors.text.secondary}
+                                    style={styles.inputIcon}
                                 />
-                                <Text style={styles.submitButtonText}>
-                                    {existingDeck ? 'Actualizar Mazo' : 'Crear Mazo'}
-                                </Text>
-                            </>
-                        )}
-                    </TouchableOpacity>
-                </View>
-            </ScrollView>
-        </KeyboardAvoidingView>
+                                <TextInput
+                                    style={styles.input}
+                                    value={name}
+                                    onChangeText={(text) => {
+                                        setName(text);
+                                        setError('');
+                                    }}
+                                    placeholder="Ingrese el nombre del mazo"
+                                    placeholderTextColor={theme.colors.text.disabled}
+                                />
+                            </View>
+                            {error ? <Text style={styles.errorText}>{error}</Text> : null}
+                        </View>
+
+                        <View style={styles.inputGroup}>
+                            <Text style={styles.label}>Descripción (opcional)</Text>
+                            <View style={[styles.inputContainer, styles.textAreaContainer]}>
+                                <AntDesign
+                                    name="filetext1"
+                                    size={20}
+                                    color={theme.colors.text.secondary}
+                                    style={styles.inputIcon}
+                                />
+                                <TextInput
+                                    style={[styles.input, styles.textArea]}
+                                    value={description}
+                                    onChangeText={setDescription}
+                                    placeholder="Ingrese una descripción"
+                                    placeholderTextColor={theme.colors.text.disabled}
+                                    multiline
+                                    numberOfLines={4}
+                                    textAlignVertical="top"
+                                />
+                            </View>
+                        </View>
+
+                        <TouchableOpacity
+                            style={[styles.submitButton, isSubmitting && styles.submitButtonDisabled]}
+                            onPress={handleSubmit}
+                            disabled={isSubmitting}
+                        >
+                            {isSubmitting ? (
+                                <ActivityIndicator color={theme.colors.text.primary} />
+                            ) : (
+                                <>
+                                    <AntDesign
+                                        name={existingDeck ? 'save' : 'plus'}
+                                        size={20}
+                                        color={theme.colors.text.primary}
+                                        style={styles.submitButtonIcon}
+                                    />
+                                    <Text style={styles.submitButtonText}>
+                                        {existingDeck ? 'Actualizar Mazo' : 'Crear Mazo'}
+                                    </Text>
+                                </>
+                            )}
+                        </TouchableOpacity>
+                    </View>
+                </ScrollView>
+            </KeyboardAvoidingView>
+        </SafeAreaView>
     );
 }
 

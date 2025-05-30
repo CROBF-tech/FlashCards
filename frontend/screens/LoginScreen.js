@@ -10,6 +10,7 @@ import {
     Platform,
     ActivityIndicator,
 } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { AntDesign } from '@expo/vector-icons';
 import { useAuth } from '../context/AuthContext';
 import { theme, styles as globalStyles } from '../theme';
@@ -38,78 +39,83 @@ export default function LoginScreen({ navigation }) {
     };
 
     return (
-        <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'} style={globalStyles.container}>
-            <ScrollView contentContainerStyle={styles.scrollContent}>
-                <View style={styles.formContainer}>
-                    <View style={styles.header}>
-                        <Text style={styles.headerTitle}>Bienvenido</Text>
-                        <Text style={styles.headerSubtitle}>Inicia sesión para continuar</Text>
-                    </View>
-
-                    <View style={styles.card}>
-                        <View style={styles.inputGroup}>
-                            <View style={styles.inputHeader}>
-                                <AntDesign name="mail" size={20} color={theme.colors.secondary} />
-                                <Text style={styles.label}>Email</Text>
-                            </View>
-                            <TextInput
-                                style={styles.input}
-                                value={email}
-                                onChangeText={(text) => {
-                                    setEmail(text);
-                                    setError('');
-                                }}
-                                placeholder="Ingrese su email"
-                                placeholderTextColor={theme.colors.text.disabled}
-                                autoCapitalize="none"
-                                keyboardType="email-address"
-                            />
+        <SafeAreaView style={{ flex: 1, backgroundColor: theme.colors.background.dark }} edges={['top', 'bottom']}>
+            <KeyboardAvoidingView
+                behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+                style={globalStyles.container}
+            >
+                <ScrollView contentContainerStyle={styles.scrollContent}>
+                    <View style={styles.formContainer}>
+                        <View style={styles.header}>
+                            <Text style={styles.headerTitle}>Bienvenido</Text>
+                            <Text style={styles.headerSubtitle}>Inicia sesión para continuar</Text>
                         </View>
 
-                        <View style={styles.inputGroup}>
-                            <View style={styles.inputHeader}>
-                                <AntDesign name="lock" size={20} color={theme.colors.secondary} />
-                                <Text style={styles.label}>Contraseña</Text>
+                        <View style={styles.card}>
+                            <View style={styles.inputGroup}>
+                                <View style={styles.inputHeader}>
+                                    <AntDesign name="mail" size={20} color={theme.colors.secondary} />
+                                    <Text style={styles.label}>Email</Text>
+                                </View>
+                                <TextInput
+                                    style={styles.input}
+                                    value={email}
+                                    onChangeText={(text) => {
+                                        setEmail(text);
+                                        setError('');
+                                    }}
+                                    placeholder="Ingrese su email"
+                                    placeholderTextColor={theme.colors.text.disabled}
+                                    autoCapitalize="none"
+                                    keyboardType="email-address"
+                                />
                             </View>
-                            <TextInput
-                                style={styles.input}
-                                value={password}
-                                onChangeText={(text) => {
-                                    setPassword(text);
-                                    setError('');
-                                }}
-                                placeholder="Ingrese su contraseña"
-                                placeholderTextColor={theme.colors.text.disabled}
-                                secureTextEntry
-                            />
+
+                            <View style={styles.inputGroup}>
+                                <View style={styles.inputHeader}>
+                                    <AntDesign name="lock" size={20} color={theme.colors.secondary} />
+                                    <Text style={styles.label}>Contraseña</Text>
+                                </View>
+                                <TextInput
+                                    style={styles.input}
+                                    value={password}
+                                    onChangeText={(text) => {
+                                        setPassword(text);
+                                        setError('');
+                                    }}
+                                    placeholder="Ingrese su contraseña"
+                                    placeholderTextColor={theme.colors.text.disabled}
+                                    secureTextEntry
+                                />
+                            </View>
+
+                            {error ? (
+                                <View style={styles.errorContainer}>
+                                    <AntDesign name="exclamationcircle" size={16} color={theme.colors.danger} />
+                                    <Text style={styles.errorText}>{error}</Text>
+                                </View>
+                            ) : null}
+
+                            <TouchableOpacity
+                                style={[styles.submitButton, isSubmitting && styles.submitButtonDisabled]}
+                                onPress={handleSubmit}
+                                disabled={isSubmitting}
+                            >
+                                {isSubmitting ? (
+                                    <ActivityIndicator color={theme.colors.text.primary} />
+                                ) : (
+                                    <Text style={styles.submitButtonText}>Iniciar Sesión</Text>
+                                )}
+                            </TouchableOpacity>
                         </View>
 
-                        {error ? (
-                            <View style={styles.errorContainer}>
-                                <AntDesign name="exclamationcircle" size={16} color={theme.colors.danger} />
-                                <Text style={styles.errorText}>{error}</Text>
-                            </View>
-                        ) : null}
-
-                        <TouchableOpacity
-                            style={[styles.submitButton, isSubmitting && styles.submitButtonDisabled]}
-                            onPress={handleSubmit}
-                            disabled={isSubmitting}
-                        >
-                            {isSubmitting ? (
-                                <ActivityIndicator color={theme.colors.text.primary} />
-                            ) : (
-                                <Text style={styles.submitButtonText}>Iniciar Sesión</Text>
-                            )}
+                        <TouchableOpacity style={styles.linkButton} onPress={() => navigation.navigate('Register')}>
+                            <Text style={styles.linkButtonText}>¿No tienes cuenta? Regístrate</Text>
                         </TouchableOpacity>
                     </View>
-
-                    <TouchableOpacity style={styles.linkButton} onPress={() => navigation.navigate('Register')}>
-                        <Text style={styles.linkButtonText}>¿No tienes cuenta? Regístrate</Text>
-                    </TouchableOpacity>
-                </View>
-            </ScrollView>
-        </KeyboardAvoidingView>
+                </ScrollView>
+            </KeyboardAvoidingView>
+        </SafeAreaView>
     );
 }
 

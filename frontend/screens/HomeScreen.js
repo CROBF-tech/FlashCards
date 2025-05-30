@@ -2,6 +2,7 @@
 import React, { useState, useEffect } from 'react';
 import { View, Text, FlatList, TouchableOpacity, ActivityIndicator, StyleSheet, Alert } from 'react-native';
 import { AntDesign } from '@expo/vector-icons';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import api from '../utils/api';
 import { theme, styles as globalStyles } from '../theme';
 import { useAuth } from '../context/AuthContext';
@@ -83,44 +84,46 @@ export default function HomeScreen({ navigation }) {
     }
 
     return (
-        <View style={globalStyles.container}>
-            <FlatList
-                data={decks}
-                renderItem={renderDeckItem}
-                keyExtractor={(item) => item.id.toString()}
-                contentContainerStyle={styles.listContainer}
-                ListEmptyComponent={
-                    <View style={styles.emptyContainer}>
-                        <AntDesign name="inbox" size={48} color={theme.colors.text.secondary} />
-                        <Text style={styles.emptyText}>No hay mazos disponibles.{'\n'}¡Crea uno nuevo!</Text>
-                    </View>
-                }
-            />
+        <SafeAreaView style={{ flex: 1, backgroundColor: theme.colors.background.dark }} edges={['top', 'bottom']}>
+            <View style={globalStyles.container}>
+                <FlatList
+                    data={decks}
+                    renderItem={renderDeckItem}
+                    keyExtractor={(item) => item.id.toString()}
+                    contentContainerStyle={styles.listContainer}
+                    ListEmptyComponent={
+                        <View style={styles.emptyContainer}>
+                            <AntDesign name="inbox" size={48} color={theme.colors.text.secondary} />
+                            <Text style={styles.emptyText}>No hay mazos disponibles.{'\n'}¡Crea uno nuevo!</Text>
+                        </View>
+                    }
+                />
 
-            {/* Botones flotantes */}
-            <View style={styles.fabContainer}>
-                <TouchableOpacity
-                    style={[styles.fabButton, styles.fabPrimary]}
-                    onPress={() => navigation.navigate('AddEditDeck')}
-                >
-                    <AntDesign name="plus" size={24} color={theme.colors.text.primary} />
-                </TouchableOpacity>
-                <View style={styles.fabSecondaryContainer}>
+                {/* Botones flotantes */}
+                <View style={styles.fabContainer}>
                     <TouchableOpacity
-                        style={[styles.fabButton, styles.fabSecondary]}
-                        onPress={() => navigation.navigate('Search')}
+                        style={[styles.fabButton, styles.fabPrimary]}
+                        onPress={() => navigation.navigate('AddEditDeck')}
                     >
-                        <AntDesign name="search1" size={24} color={theme.colors.text.primary} />
+                        <AntDesign name="plus" size={24} color={theme.colors.text.primary} />
                     </TouchableOpacity>
-                    <TouchableOpacity
-                        style={[styles.fabButton, styles.fabSecondary]}
-                        onPress={() => navigation.navigate('Stats')}
-                    >
-                        <AntDesign name="barschart" size={24} color={theme.colors.text.primary} />
-                    </TouchableOpacity>
+                    <View style={styles.fabSecondaryContainer}>
+                        <TouchableOpacity
+                            style={[styles.fabButton, styles.fabSecondary]}
+                            onPress={() => navigation.navigate('Search')}
+                        >
+                            <AntDesign name="search1" size={24} color={theme.colors.text.primary} />
+                        </TouchableOpacity>
+                        <TouchableOpacity
+                            style={[styles.fabButton, styles.fabSecondary]}
+                            onPress={() => navigation.navigate('Stats')}
+                        >
+                            <AntDesign name="barschart" size={24} color={theme.colors.text.primary} />
+                        </TouchableOpacity>
+                    </View>
                 </View>
             </View>
-        </View>
+        </SafeAreaView>
     );
 }
 

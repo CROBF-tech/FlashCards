@@ -1,15 +1,7 @@
 // screens/SearchScreen.js
 import React, { useState, useEffect } from 'react';
-import {
-    View,
-    Text,
-    TextInput,
-    FlatList,
-    TouchableOpacity,
-    ActivityIndicator,
-    StyleSheet,
-    Dimensions,
-} from 'react-native';
+import { View, Text, TextInput, FlatList, TouchableOpacity, ActivityIndicator, StyleSheet } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { AntDesign } from '@expo/vector-icons';
 import api from '../utils/api';
 import { theme, styles as globalStyles } from '../theme';
@@ -92,79 +84,86 @@ export default function SearchScreen({ navigation }) {
     );
 
     return (
-        <View style={globalStyles.container}>
-            <View style={styles.searchContainer}>
-                <View style={styles.searchInputContainer}>
-                    <AntDesign name="search1" size={20} color={theme.colors.text.secondary} style={styles.searchIcon} />
-                    <TextInput
-                        style={styles.searchInput}
-                        value={query}
-                        onChangeText={setQuery}
-                        placeholder="Buscar tarjetas..."
-                        placeholderTextColor={theme.colors.text.disabled}
-                        onSubmitEditing={handleSearch}
-                    />
-                    {query.length > 0 && (
-                        <TouchableOpacity onPress={() => setQuery('')} style={styles.clearButton}>
-                            <AntDesign name="close" size={20} color={theme.colors.text.secondary} />
-                        </TouchableOpacity>
-                    )}
-                </View>
-
-                <Text style={styles.tagsLabel}>Filtrar por etiqueta:</Text>
-                {tagsLoading ? (
-                    <ActivityIndicator size="small" color={theme.colors.primary} style={styles.tagsLoading} />
-                ) : (
-                    <FlatList
-                        data={allTags}
-                        renderItem={({ item }) => (
-                            <TagChip
-                                label={item}
-                                selected={tag === item}
-                                onPress={() => setTag(tag === item ? '' : item)}
-                            />
-                        )}
-                        keyExtractor={(item) => item}
-                        horizontal
-                        showsHorizontalScrollIndicator={false}
-                        style={styles.tagsList}
-                    />
-                )}
-
-                <TouchableOpacity
-                    style={[styles.searchButton, !query.trim() && !tag.trim() && styles.searchButtonDisabled]}
-                    onPress={handleSearch}
-                    disabled={loading || (!query.trim() && !tag.trim())}
-                >
-                    <Text style={styles.searchButtonText}>{loading ? 'Buscando...' : 'Buscar'}</Text>
-                    {loading && (
-                        <ActivityIndicator color={theme.colors.text.primary} style={styles.searchingIndicator} />
-                    )}
-                </TouchableOpacity>
-            </View>
-
-            <FlatList
-                data={results}
-                renderItem={renderCardItem}
-                keyExtractor={(item) => item.id.toString()}
-                contentContainerStyle={styles.resultsList}
-                ListEmptyComponent={
-                    <View style={styles.emptyContainer}>
-                        {query.trim() || tag.trim() ? (
-                            <>
-                                <AntDesign name="inbox" size={48} color={theme.colors.text.secondary} />
-                                <Text style={styles.emptyText}>No se encontraron resultados</Text>
-                            </>
-                        ) : (
-                            <>
-                                <AntDesign name="search1" size={48} color={theme.colors.text.secondary} />
-                                <Text style={styles.emptyText}>Realiza una búsqueda para ver resultados</Text>
-                            </>
+        <SafeAreaView style={{ flex: 1, backgroundColor: theme.colors.background.dark }} edges={['top', 'bottom']}>
+            <View style={globalStyles.container}>
+                <View style={styles.searchContainer}>
+                    <View style={styles.searchInputContainer}>
+                        <AntDesign
+                            name="search1"
+                            size={20}
+                            color={theme.colors.text.secondary}
+                            style={styles.searchIcon}
+                        />
+                        <TextInput
+                            style={styles.searchInput}
+                            value={query}
+                            onChangeText={setQuery}
+                            placeholder="Buscar tarjetas..."
+                            placeholderTextColor={theme.colors.text.disabled}
+                            onSubmitEditing={handleSearch}
+                        />
+                        {query.length > 0 && (
+                            <TouchableOpacity onPress={() => setQuery('')} style={styles.clearButton}>
+                                <AntDesign name="close" size={20} color={theme.colors.text.secondary} />
+                            </TouchableOpacity>
                         )}
                     </View>
-                }
-            />
-        </View>
+
+                    <Text style={styles.tagsLabel}>Filtrar por etiqueta:</Text>
+                    {tagsLoading ? (
+                        <ActivityIndicator size="small" color={theme.colors.primary} style={styles.tagsLoading} />
+                    ) : (
+                        <FlatList
+                            data={allTags}
+                            renderItem={({ item }) => (
+                                <TagChip
+                                    label={item}
+                                    selected={tag === item}
+                                    onPress={() => setTag(tag === item ? '' : item)}
+                                />
+                            )}
+                            keyExtractor={(item) => item}
+                            horizontal
+                            showsHorizontalScrollIndicator={false}
+                            style={styles.tagsList}
+                        />
+                    )}
+
+                    <TouchableOpacity
+                        style={[styles.searchButton, !query.trim() && !tag.trim() && styles.searchButtonDisabled]}
+                        onPress={handleSearch}
+                        disabled={loading || (!query.trim() && !tag.trim())}
+                    >
+                        <Text style={styles.searchButtonText}>{loading ? 'Buscando...' : 'Buscar'}</Text>
+                        {loading && (
+                            <ActivityIndicator color={theme.colors.text.primary} style={styles.searchingIndicator} />
+                        )}
+                    </TouchableOpacity>
+                </View>
+
+                <FlatList
+                    data={results}
+                    renderItem={renderCardItem}
+                    keyExtractor={(item) => item.id.toString()}
+                    contentContainerStyle={styles.resultsList}
+                    ListEmptyComponent={
+                        <View style={styles.emptyContainer}>
+                            {query.trim() || tag.trim() ? (
+                                <>
+                                    <AntDesign name="inbox" size={48} color={theme.colors.text.secondary} />
+                                    <Text style={styles.emptyText}>No se encontraron resultados</Text>
+                                </>
+                            ) : (
+                                <>
+                                    <AntDesign name="search1" size={48} color={theme.colors.text.secondary} />
+                                    <Text style={styles.emptyText}>Realiza una búsqueda para ver resultados</Text>
+                                </>
+                            )}
+                        </View>
+                    }
+                />
+            </View>
+        </SafeAreaView>
     );
 }
 

@@ -282,7 +282,8 @@ app.delete('/cards/:id', auth, async (req, res) => {
 // Rutas para estudio
 app.get('/decks/:id/study', auth, async (req, res) => {
     try {
-        const cards = await db.getDueCards(parseInt(req.params.id), req.user.id, 20);
+        const ignoreDate = req.query.ignoreDate === 'true';
+        const cards = await db.getDueCards(parseInt(req.params.id), req.user.id, 20, ignoreDate);
         res.json(
             cards.map((card) => ({
                 ...card,

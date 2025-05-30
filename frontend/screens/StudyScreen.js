@@ -10,6 +10,7 @@ import {
     Animated,
     Dimensions,
 } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { AntDesign } from '@expo/vector-icons';
 import api from '../utils/api';
 import { theme, styles as globalStyles } from '../theme';
@@ -28,10 +29,10 @@ export default function StudyScreen({ route, navigation }) {
         fetchDueCards();
     }, [deckId]);
 
-    const fetchDueCards = async () => {
+    const fetchDueCards = async (ignoreDate = false) => {
         setLoading(true);
         try {
-            const response = await api.get(`/decks/${deckId}/study`);
+            const response = await api.get(`/decks/${deckId}/study${ignoreDate ? '?ignoreDate=true' : ''}`);
             setCards(response.data);
             setCurrentCardIndex(0);
             setShowAnswer(false);
@@ -131,12 +132,23 @@ export default function StudyScreen({ route, navigation }) {
             <View style={[globalStyles.container, styles.centerContent]}>
                 <AntDesign name="Trophy" size={64} color={theme.colors.primary} />
                 <Text style={styles.congratsText}>¡Felicidades!{'\n'}Has completado todas las tarjetas para hoy.</Text>
-                <TouchableOpacity
-                    style={[globalStyles.button.primary, styles.returnButton]}
-                    onPress={() => navigation.goBack()}
-                >
-                    <Text style={globalStyles.buttonText.primary}>Volver al Mazo</Text>
-                </TouchableOpacity>
+                <View style={styles.buttonContainer}>
+                    <TouchableOpacity
+                        style={[globalStyles.button.primary, styles.actionButton]}
+                        onPress={() => {
+                            setStudyComplete(false);
+                            fetchDueCards(true);
+                        }}
+                    >
+                        <Text style={globalStyles.buttonText.primary}>Estudiar de nuevo</Text>
+                    </TouchableOpacity>
+                    <TouchableOpacity
+                        style={[globalStyles.button.secondary, styles.actionButton]}
+                        onPress={() => navigation.goBack()}
+                    >
+                        <Text style={globalStyles.buttonText.secondary}>Volver al Mazo</Text>
+                    </TouchableOpacity>
+                </View>
             </View>
         );
     }
@@ -144,41 +156,46 @@ export default function StudyScreen({ route, navigation }) {
     const currentCard = cards[currentCardIndex];
 
     return (
-        <View style={globalStyles.container}>
-            <View style={styles.progressContainer}>
-                <Text style={styles.progressText}>
-                    Tarjeta {currentCardIndex + 1} de {cards.length}
-                </Text>
-                <View style={styles.progressBar}>
-                    <View
-                        style={[styles.progressFill, { width: `${((currentCardIndex + 1) / cards.length) * 100}%` }]}
-                    />
+        <SafeAreaView style={{ flex: 1, backgroundColor: theme.colors.background.dark }} edges={['top', 'bottom']}>
+            <View style={globalStyles.container}>
+                <View style={styles.progressContainer}>
+                    <Text style={styles.progressText}>
+                        Tarjeta {currentCardIndex + 1} de {cards.length}
+                    </Text>
+                    <View style={styles.progressBar}>
+                        <View
+                            style={[
+                                styles.progressFill,
+                                { width: `${((currentCardIndex + 1) / cards.length) * 100}%` },
+                            ]}
+                        />
+                    </View>
                 </View>
-            </View>
 
-            <View style={styles.cardContainer}>
-                <TouchableOpacity activeOpacity={0.9} onPress={handleFlip}>
-                    <Animated.View style={[styles.card, !showAnswer ? frontAnimatedStyle : backAnimatedStyle]}>
-                        <ScrollView contentContainerStyle={styles.cardContent}>
-                            <Text style={styles.cardTitle}>{showAnswer ? 'Respuesta' : 'Pregunta'}</Text>
-                            <Text style={styles.cardText}>{showAnswer ? currentCard.back : currentCard.front}</Text>
-                            <Text style={styles.tapHint}>
-                                Toca para {showAnswer ? 'ver pregunta' : 'ver respuesta'}
-                            </Text>
-                        </ScrollView>
-                    </Animated.View>
-                </TouchableOpacity>
-            </View>
-
-            {showAnswer && (
-                <View style={styles.qualityButtonsContainer}>
-                    {renderQualityButton(0, 'Olvidé', theme.colors.danger)}
-                    {renderQualityButton(3, 'Difícil', theme.colors.warning)}
-                    {renderQualityButton(4, 'Bien', theme.colors.success)}
-                    {renderQualityButton(5, 'Fácil', theme.colors.secondary)}
+                <View style={styles.cardContainer}>
+                    <TouchableOpacity activeOpacity={0.9} onPress={handleFlip}>
+                        <Animated.View style={[styles.card, !showAnswer ? frontAnimatedStyle : backAnimatedStyle]}>
+                            <ScrollView contentContainerStyle={styles.cardContent}>
+                                <Text style={styles.cardTitle}>{showAnswer ? 'Respuesta' : 'Pregunta'}</Text>
+                                <Text style={styles.cardText}>{showAnswer ? currentCard.back : currentCard.front}</Text>
+                                <Text style={styles.tapHint}>
+                                    Toca para {showAnswer ? 'ver pregunta' : 'ver respuesta'}
+                                </Text>
+                            </ScrollView>
+                        </Animated.View>
+                    </TouchableOpacity>
                 </View>
-            )}
-        </View>
+
+                {showAnswer && (
+                    <View style={styles.qualityButtonsContainer}>
+                        {renderQualityButton(0, 'Olvidé', theme.colors.danger)}
+                        {renderQualityButton(3, 'Difícil', theme.colors.warning)}
+                        {renderQualityButton(4, 'Bien', theme.colors.success)}
+                        {renderQualityButton(5, 'Fácil', theme.colors.secondary)}
+                    </View>
+                )}
+            </View>
+        </SafeAreaView>
     );
 }
 
@@ -278,5 +295,13 @@ const styles = StyleSheet.create({
     returnButton: {
         minWidth: 200,
         marginTop: theme.spacing.xl,
+    },
+    buttonContainer: {
+        flexDirection: 'row',
+        marginTop: theme.spacing.xl,
+        gap: theme.spacing.md,
+    },
+    actionButton: {
+        minWidth: 150,
     },
 });
