@@ -21,7 +21,8 @@
       "adaptiveIcon": {
         "foregroundImage": "./assets/icon.png",
         "backgroundColor": "#ffffff"
-      }
+      },
+      "package": "tech.crobf.flashcards"
     },
     "web": {
       "favicon": "./assets/icon.png"
