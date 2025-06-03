@@ -84,7 +84,7 @@ export default function HomeScreen({ navigation }) {
     }
 
     return (
-        <SafeAreaView style={{ flex: 1, backgroundColor: theme.colors.background.dark }} edges={['top', 'bottom']}>
+        <SafeAreaView style={{ flex: 1, backgroundColor: theme.colors.background.dark }} edges={['bottom']}>
             <View style={globalStyles.container}>
                 <FlatList
                     data={decks}

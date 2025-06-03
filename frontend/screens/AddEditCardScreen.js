@@ -70,7 +70,7 @@ export default function AddEditCardScreen({ route, navigation }) {
     };
 
     return (
-        <SafeAreaView style={{ flex: 1, backgroundColor: theme.colors.background.dark }} edges={['top', 'bottom']}>
+        <SafeAreaView style={{ flex: 1, backgroundColor: theme.colors.background.dark }} edges={['bottom']}>
             <KeyboardAvoidingView
                 style={globalStyles.container}
                 behavior={Platform.OS === 'ios' ? 'padding' : undefined}

@@ -39,7 +39,7 @@ export default function LoginScreen({ navigation }) {
     };
 
     return (
-        <SafeAreaView style={{ flex: 1, backgroundColor: theme.colors.background.dark }} edges={['top', 'bottom']}>
+        <SafeAreaView style={{ flex: 1, backgroundColor: theme.colors.background.dark }} edges={['bottom']}>
             <KeyboardAvoidingView
                 behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
                 style={globalStyles.container}

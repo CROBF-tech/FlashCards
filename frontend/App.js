@@ -17,6 +17,7 @@ import AddEditCardScreen from './screens/AddEditCardScreen';
 import SearchScreen from './screens/SearchScreen';
 import StatsScreen from './screens/StatsScreen';
 import SettingsScreen from './screens/SettingsScreen';
+import { SafeAreaProvider } from 'react-native-safe-area-context';
 
 const Stack = createNativeStackNavigator();
 
@@ -108,10 +109,12 @@ function Navigation() {
 export default function App() {
     return (
         <AuthProvider>
-            <NavigationContainer theme={NavigationDarkTheme}>
-                <StatusBar style="light" />
-                <Navigation />
-            </NavigationContainer>
+            <SafeAreaProvider>
+                <NavigationContainer theme={NavigationDarkTheme}>
+                    <StatusBar style="light" />
+                    <Navigation />
+                </NavigationContainer>
+            </SafeAreaProvider>
         </AuthProvider>
     );
 }

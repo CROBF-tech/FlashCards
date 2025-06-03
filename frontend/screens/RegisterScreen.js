@@ -46,7 +46,7 @@ export default function RegisterScreen({ navigation }) {
     };
 
     return (
-        <SafeAreaView style={{ flex: 1, backgroundColor: theme.colors.background.dark }} edges={['top', 'bottom']}>
+        <SafeAreaView style={{ flex: 1, backgroundColor: theme.colors.background.dark }} edges={['bottom']}>
             <KeyboardAvoidingView
                 behavior={Platform.OS === 'ios' ? 'padding' : 'padding'}
                 style={globalStyles.container}

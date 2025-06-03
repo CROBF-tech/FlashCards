@@ -72,7 +72,7 @@ const SettingsScreen = ({ navigation }) => {
     );
 
     return (
-        <SafeAreaView style={{ flex: 1, backgroundColor: theme.colors.background.dark }} edges={['top', 'bottom']}>
+        <SafeAreaView style={{ flex: 1, backgroundColor: theme.colors.background.dark }} edges={['bottom']}>
             <ScrollView style={styles.container}>
                 <View style={styles.section}>
                     <Text style={styles.sectionTitle}>Cuenta</Text>

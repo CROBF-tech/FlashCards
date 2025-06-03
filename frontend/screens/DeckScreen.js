@@ -124,7 +124,7 @@ export default function DeckScreen({ route, navigation }) {
         };
 
         return (
-            <SafeAreaView style={{ flex: 1, backgroundColor: theme.colors.background.dark }} edges={['top', 'bottom']}>
+            <SafeAreaView style={{ flex: 1, backgroundColor: theme.colors.background.dark }} edges={['bottom']}>
                 <View style={styles.cardContainer}>
                     <TouchableOpacity activeOpacity={0.9} onPress={flipCard} style={styles.cardTouchable}>
                         <Animated.View style={[styles.cardSide, frontAnimatedStyle]}>
@@ -179,7 +179,7 @@ export default function DeckScreen({ route, navigation }) {
     }
 
     return (
-        <SafeAreaView style={{ flex: 1, backgroundColor: theme.colors.background.dark }} edges={['top', 'bottom']}>
+        <SafeAreaView style={{ flex: 1, backgroundColor: theme.colors.background.dark }} edges={['bottom']}>
             <View style={globalStyles.container}>
                 <View style={styles.header}>
                     <View style={styles.headerContent}>

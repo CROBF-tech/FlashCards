@@ -121,7 +121,7 @@ export default function StatsScreen() {
     }
 
     return (
-        <SafeAreaView style={{ flex: 1, backgroundColor: theme.colors.background.dark }} edges={['top', 'bottom']}>
+        <SafeAreaView style={{ flex: 1, backgroundColor: theme.colors.background.dark }} edges={['bottom']}>
             <ScrollView
                 style={globalStyles.container}
                 contentContainerStyle={styles.scrollContent}
