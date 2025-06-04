@@ -1,36 +1,46 @@
 {
-  "expo": {
-    "name": "FlashCards App",
-    "slug": "flashcards-app",
-    "version": "1.0.0",
-    "orientation": "portrait",
-    "icon": "./assets/icon.png",
-    "userInterfaceStyle": "dark",
-    "splash": {
-      "image": "./assets/icon.png",
-      "resizeMode": "contain",
-      "backgroundColor": "#ffffff"
-    },
-    "assetBundlePatterns": [
-      "**/*"
-    ],
-    "ios": {
-      "supportsTablet": true
-    },
-    "android": {
-      "adaptiveIcon": {
-        "foregroundImage": "./assets/icon.png",
-        "backgroundColor": "#ffffff"
-      },
-      "package": "tech.crobf.flashcards"
-    },
-    "web": {
-      "favicon": "./assets/icon.png"
-    },
-    "extra": {
-      "eas": {
-        "projectId": "9fab48bd-cdf7-440c-ab64-9fa1c0eecbd7"
-      }
+    "expo": {
+        "name": "FlashCards App",
+        "slug": "flashcards-app",
+        "version": "1.0.0",
+        "orientation": "portrait",
+        "icon": "./assets/icon.png",
+        "userInterfaceStyle": "dark",
+        "platforms": ["ios", "android", "web"],
+        "splash": {
+            "image": "./assets/icon.png",
+            "resizeMode": "contain",
+            "backgroundColor": "#ffffff"
+        },
+        "assetBundlePatterns": ["**/*"],
+        "ios": {
+            "supportsTablet": true,
+            "bundleIdentifier": "tech.crobf.flashcards"
+        },
+        "android": {
+            "adaptiveIcon": {
+                "foregroundImage": "./assets/icon.png",
+                "backgroundColor": "#ffffff"
+            },
+            "package": "tech.crobf.flashcards"
+        },
+        "web": {
+            "favicon": "./assets/icon.png",
+            "build": {
+                "babel": {
+                    "include": ["@expo/vector-icons"]
+                }
+            }
+        },
+        "fonts": [
+            {
+                "asset": "./assets/fonts/AntDesign.ttf"
+            }
+        ],
+        "extra": {
+            "eas": {
+                "projectId": "9fab48bd-cdf7-440c-ab64-9fa1c0eecbd7"
+            }
+        }
     }
-  }
 }

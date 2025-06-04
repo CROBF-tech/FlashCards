@@ -1,4 +1,3 @@
-// App.js
 import { NavigationContainer, DefaultTheme } from '@react-navigation/native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { StatusBar } from 'expo-status-bar';
@@ -6,7 +5,13 @@ import { TouchableOpacity } from 'react-native';
 import { AntDesign } from '@expo/vector-icons';
 import { theme } from './theme';
 import { AuthProvider, useAuth } from './context/AuthContext';
+import { SafeAreaProvider } from 'react-native-safe-area-context';
+import { Platform } from 'react-native';
+import * as Font from 'expo-font';
+import { useEffect, useState } from 'react';
+import { ActivityIndicator, View } from 'react-native';
 
+import PrivacyPolicyScreen from './screens/PrivacyPolicyScreen';
 import HomeScreen from './screens/HomeScreen';
 import LoginScreen from './screens/LoginScreen';
 import RegisterScreen from './screens/RegisterScreen';
@@ -17,7 +22,15 @@ import AddEditCardScreen from './screens/AddEditCardScreen';
 import SearchScreen from './screens/SearchScreen';
 import StatsScreen from './screens/StatsScreen';
 import SettingsScreen from './screens/SettingsScreen';
-import { SafeAreaProvider } from 'react-native-safe-area-context';
+
+// Solo importar en web:
+let BrowserRouter, Routes, Route;
+if (Platform.OS === 'web') {
+    const routerDom = require('react-router-dom');
+    BrowserRouter = routerDom.BrowserRouter;
+    Routes = routerDom.Routes;
+    Route = routerDom.Route;
+}
 
 const Stack = createNativeStackNavigator();
 
@@ -105,8 +118,34 @@ function Navigation() {
         </Stack.Navigator>
     );
 }
+// App con react-navigation
+function AppWithNavigation() {
+    const [fontsLoaded, setFontsLoaded] = useState(false);
 
-export default function App() {
+    useEffect(() => {
+        async function loadFonts() {
+            try {
+                await Font.loadAsync({
+                    ...AntDesign.font,
+                });
+                console.log('Fonts loaded successfully');
+                setFontsLoaded(true);
+            } catch (e) {
+                console.error('Error loading fonts:', e);
+                setFontsLoaded(true);
+            }
+        }
+        loadFonts();
+    }, []);
+
+    if (!fontsLoaded) {
+        return (
+            <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: '#000' }}>
+                <ActivityIndicator size="large" color="#fff" />
+            </View>
+        );
+    }
+
     return (
         <AuthProvider>
             <SafeAreaProvider>
@@ -117,4 +156,20 @@ export default function App() {
             </SafeAreaProvider>
         </AuthProvider>
     );
+}
+
+// Export final
+export default function App() {
+    if (Platform.OS === 'web') {
+        return (
+            <BrowserRouter>
+                <Routes>
+                    <Route path="/politicadeprivacidad" element={<PrivacyPolicyScreen />} />
+                    <Route path="*" element={<AppWithNavigation />} />
+                </Routes>
+            </BrowserRouter>
+        );
+    }
+
+    return <AppWithNavigation />;
 }

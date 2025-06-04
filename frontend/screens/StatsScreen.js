@@ -231,8 +231,6 @@ export default function StatsScreen() {
                         </View>
                     </View>
                 </View>
-
-                <DailyProgressChart data={stats?.daily_progress} />
             </ScrollView>
         </SafeAreaView>
     );

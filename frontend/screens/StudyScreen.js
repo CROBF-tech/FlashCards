@@ -1,5 +1,4 @@
-// screens/StudyScreen.js
-import React, { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import {
     View,
     Text,
@@ -14,6 +13,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { AntDesign } from '@expo/vector-icons';
 import api from '../utils/api';
 import { theme, styles as globalStyles } from '../theme';
+import { scheduleDeckReminders } from '../utils/notifications';
 
 export default function StudyScreen({ route, navigation }) {
     const { deckId } = route.params;
@@ -24,10 +24,23 @@ export default function StudyScreen({ route, navigation }) {
     const [error, setError] = useState(null);
     const [studyComplete, setStudyComplete] = useState(false);
     const [flipAnim] = useState(new Animated.Value(0));
+    const hasScheduledRef = useRef(false);
 
     useEffect(() => {
         fetchDueCards();
     }, [deckId]);
+
+    useEffect(() => {
+        if (studyComplete && !hasScheduledRef.current) {
+            api.get(`/decks/${deckId}`)
+                .then((res) => {
+                    const deckName = res.data.name;
+                    scheduleDeckReminders(deckId, deckName, true);
+                    hasScheduledRef.current = true;
+                })
+                .catch((err) => console.warn('Error al obtener nombre del mazo para notificación:', err));
+        }
+    }, [studyComplete]);
 
     const fetchDueCards = async (ignoreDate = false) => {
         setLoading(true);
