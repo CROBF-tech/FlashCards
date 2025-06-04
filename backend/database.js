@@ -339,6 +339,123 @@ class FlashcardsDB {
         });
         return result.rowsAffected > 0;
     }
+    // Métodos para estadísticas (actualizados para usuarios)
+    async getStudyStats(userId) {
+        // Estadísticas básicas
+        const totalCards = (
+            await this.client.execute({
+                sql: `SELECT COUNT(*) as count 
+                 FROM cards c
+                 JOIN decks d ON c.deck_id = d.id
+                 WHERE d.user_id = ?`,
+                args: [userId],
+            })
+        ).rows[0].count;
+
+        const totalDecks = (
+            await this.client.execute({ sql: `SELECT COUNT(*) as count FROM decks WHERE user_id = ?`, args: [userId] })
+        ).rows[0].count;
+
+        const dueToday = (
+            await this.client.execute({
+                sql: `SELECT COUNT(*) as count 
+                 FROM cards c
+                 JOIN decks d ON c.deck_id = d.id
+                 WHERE d.user_id = ? AND c.due_date <= date('now')`,
+                args: [userId],
+            })
+        ).rows[0].count;
+
+        // Estadísticas de revisiones
+        const reviewStats = (
+            await this.client.execute({
+                sql: `SELECT 
+                    COUNT(*) as total_reviews,
+                    COUNT(DISTINCT date(timestamp)) as study_days,
+                    AVG(quality) as avg_quality,
+                    SUM(CASE WHEN quality >= 4 THEN 1 ELSE 0 END) * 100.0 / COUNT(*) as mastery_rate
+                 FROM reviews 
+                 WHERE user_id = ? 
+                 AND timestamp >= date('now', '-30 days')`,
+                args: [userId],
+            })
+        ).rows[0];
+
+        // Revisiones por día de la última semana
+        const reviewsLastWeek = (
+            await this.client.execute({
+                sql: `SELECT 
+                    date(timestamp) as date,
+                    COUNT(*) as count
+                 FROM reviews 
+                 WHERE user_id = ? 
+                 AND timestamp >= date('now', '-7 days')
+                 GROUP BY date(timestamp)
+                 ORDER BY date`,
+                args: [userId],
+            })
+        ).rows;
+
+        // Estadísticas de calidad
+        const qualityDistribution = (
+            await this.client.execute({
+                sql: `SELECT 
+                    quality,
+                    COUNT(*) as count
+                 FROM reviews 
+                 WHERE user_id = ? 
+                 AND timestamp >= date('now', '-30 days')
+                 GROUP BY quality
+                 ORDER BY quality`,
+                args: [userId],
+            })
+        ).rows;
+
+        // Progreso diario
+        const todaysProgress = (
+            await this.client.execute({
+                sql: `SELECT 
+                    COUNT(*) as reviews_today,
+                    AVG(quality) as today_avg_quality
+                 FROM reviews 
+                 WHERE user_id = ? 
+                 AND date(timestamp) = date('now')`,
+                args: [userId],
+            })
+        ).rows[0];
+
+        return {
+            // Estadísticas básicas
+            total_cards: totalCards,
+            total_decks: totalDecks,
+            due_today: dueToday,
+
+            // Estadísticas de revisión
+            reviews_last_week: reviewsLastWeek.reduce((acc, day) => acc + day.count, 0),
+            daily_reviews: reviewsLastWeek,
+            avg_quality: Math.round(reviewStats.avg_quality * 100) / 100,
+            mastery_rate: Math.round(reviewStats.mastery_rate * 100) / 100,
+            study_days: reviewStats.study_days,
+            total_reviews: reviewStats.total_reviews,
+
+            // Calidad y progreso
+            quality_distribution: qualityDistribution,
+            today: {
+                reviews: todaysProgress.reviews_today || 0,
+                avg_quality: Math.round((todaysProgress.today_avg_quality || 0) * 100) / 100,
+            },
+        };
+    }
+
+    async deleteUser(userId) {
+        try {
+            const result = await this.client.execute({ sql: `DELETE FROM users WHERE id = ?`, args: [userId] });
+            return result.rowsAffected > 0;
+        } catch (error) {
+            console.error('Error al eliminar usuario:', error);
+            throw error;
+        }
+    }
 }
 
 export default new FlashcardsDB();
