@@ -22,6 +22,9 @@ import AddEditCardScreen from './screens/AddEditCardScreen';
 import SearchScreen from './screens/SearchScreen';
 import StatsScreen from './screens/StatsScreen';
 import SettingsScreen from './screens/SettingsScreen';
+import ForgotPasswordScreen from './screens/ForgotPasswordScreen';
+import ResetPasswordScreen from './screens/ResetPasswordScreen';
+import VerifyCodeScreen from './screens/VerifyCodeScreen';
 
 // Solo importar en web:
 let BrowserRouter, Routes, Route;
@@ -69,6 +72,17 @@ function Navigation() {
                 <>
                     <Stack.Screen name="Login" component={LoginScreen} options={{ headerShown: false }} />
                     <Stack.Screen name="Register" component={RegisterScreen} options={{ headerShown: false }} />
+                    <Stack.Screen
+                        name="ForgotPassword"
+                        component={ForgotPasswordScreen}
+                        options={{ headerShown: false }}
+                    />
+                    <Stack.Screen name="VerifyCode" component={VerifyCodeScreen} options={{ headerShown: false }} />
+                    <Stack.Screen
+                        name="ResetPassword"
+                        component={ResetPasswordScreen}
+                        options={{ headerShown: false }}
+                    />
                 </>
             ) : (
                 <>

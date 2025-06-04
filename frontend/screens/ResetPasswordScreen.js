@@ -9,30 +9,54 @@ import {
     KeyboardAvoidingView,
     Platform,
     ActivityIndicator,
+    Alert,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { AntDesign } from '@expo/vector-icons';
-import { useAuth } from '../context/AuthContext';
+import { useNavigation, useRoute } from '@react-navigation/native';
+import { API_URL } from '../config';
 import { theme, styles as globalStyles } from '../theme';
+import { AntDesign } from '@expo/vector-icons';
 
-export default function LoginScreen({ navigation }) {
-    const [email, setEmail] = useState('');
+const ResetPasswordScreen = () => {
     const [password, setPassword] = useState('');
+    const [confirmPassword, setConfirmPassword] = useState('');
+    const [message, setMessage] = useState('');
     const [isSubmitting, setIsSubmitting] = useState(false);
-    const [error, setError] = useState('');
-    const { login } = useAuth();
+    const navigation = useNavigation();
+    const route = useRoute();
+    const { email, resetCode } = route.params;
 
-    const handleSubmit = async () => {
-        if (!email || !password) {
-            setError('Por favor, complete todos los campos');
+    const handleResetPassword = async () => {
+        if (password !== confirmPassword) {
+            setMessage('Contraseñas no coinciden');
+            Alert.alert('Error', 'Contraseñas no coinciden');
             return;
         }
 
         setIsSubmitting(true);
         try {
-            await login(email, password);
+            const response = await fetch(`${API_URL}/user/reset-password`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({ email, resetCode, password }),
+            });
+
+            const data = await response.json();
+
+            if (response.ok) {
+                setMessage(data.message);
+                Alert.alert('Success', data.message);
+                navigation.navigate('Login');
+            } else {
+                setMessage(data.message);
+                Alert.alert('Error', data.message);
+            }
         } catch (error) {
-            setError(error.response?.data?.error || 'Error al iniciar sesión');
+            console.error('Error:', error);
+            setMessage('Un error a ocurrido. Por favor, intente nuevamente.');
+            Alert.alert('Error', 'Un error a ocurrido. Por favor, intente nuevamente.');
         } finally {
             setIsSubmitting(false);
         }
@@ -47,83 +71,70 @@ export default function LoginScreen({ navigation }) {
                 <ScrollView contentContainerStyle={styles.scrollContent}>
                     <View style={styles.formContainer}>
                         <View style={styles.header}>
-                            <Text style={styles.headerTitle}>Bienvenido</Text>
-                            <Text style={styles.headerSubtitle}>Inicia sesión para continuar</Text>
+                            <Text style={styles.headerTitle}>Resetear Contraseña</Text>
+                            <Text style={styles.headerSubtitle}>Por favor, ingresa tu nueva contraseña</Text>
                         </View>
 
                         <View style={styles.card}>
                             <View style={styles.inputGroup}>
                                 <View style={styles.inputHeader}>
-                                    <AntDesign name="mail" size={20} color={theme.colors.secondary} />
-                                    <Text style={styles.label}>Email</Text>
+                                    <AntDesign name="lock" size={20} color={theme.colors.secondary} />
+                                    <Text style={styles.label}>Nueva Contraseña</Text>
                                 </View>
                                 <TextInput
                                     style={styles.input}
-                                    value={email}
+                                    placeholder="New Password"
+                                    secureTextEntry={true}
+                                    value={password}
                                     onChangeText={(text) => {
-                                        setEmail(text);
-                                        setError('');
+                                        setPassword(text);
+                                        setMessage('');
                                     }}
-                                    placeholder="Ingrese su email"
-                                    placeholderTextColor={theme.colors.text.disabled}
-                                    autoCapitalize="none"
-                                    keyboardType="email-address"
                                 />
                             </View>
 
                             <View style={styles.inputGroup}>
                                 <View style={styles.inputHeader}>
                                     <AntDesign name="lock" size={20} color={theme.colors.secondary} />
-                                    <Text style={styles.label}>Contraseña</Text>
+                                    <Text style={styles.label}>Confirmar Contraseña</Text>
                                 </View>
                                 <TextInput
                                     style={styles.input}
-                                    value={password}
+                                    placeholder="Confirm New Password"
+                                    secureTextEntry={true}
+                                    value={confirmPassword}
                                     onChangeText={(text) => {
-                                        setPassword(text);
-                                        setError('');
+                                        setConfirmPassword(text);
+                                        setMessage('');
                                     }}
-                                    placeholder="Ingrese su contraseña"
-                                    placeholderTextColor={theme.colors.text.disabled}
-                                    secureTextEntry
                                 />
                             </View>
 
-                            {error ? (
+                            {message ? (
                                 <View style={styles.errorContainer}>
                                     <AntDesign name="exclamationcircle" size={16} color={theme.colors.danger} />
-                                    <Text style={styles.errorText}>{error}</Text>
+                                    <Text style={styles.errorText}>{message}</Text>
                                 </View>
                             ) : null}
 
                             <TouchableOpacity
                                 style={[styles.submitButton, isSubmitting && styles.submitButtonDisabled]}
-                                onPress={handleSubmit}
+                                onPress={handleResetPassword}
                                 disabled={isSubmitting}
                             >
                                 {isSubmitting ? (
                                     <ActivityIndicator color={theme.colors.text.primary} />
                                 ) : (
-                                    <Text style={styles.submitButtonText}>Iniciar Sesión</Text>
+                                    <Text style={styles.submitButtonText}>Resetear Contraseña</Text>
                                 )}
                             </TouchableOpacity>
-                            <TouchableOpacity
-                                style={styles.linkButton}
-                                onPress={() => navigation.navigate('ForgotPassword')}
-                            >
-                                <Text style={styles.linkButtonText}>¿Olvidaste tu contraseña?</Text>
-                            </TouchableOpacity>
                         </View>
-
-                        <TouchableOpacity style={styles.linkButton} onPress={() => navigation.navigate('Register')}>
-                            <Text style={styles.linkButtonText}>¿No tienes cuenta? Regístrate</Text>
-                        </TouchableOpacity>
                     </View>
                 </ScrollView>
             </KeyboardAvoidingView>
         </SafeAreaView>
     );
-}
+};
 
 const styles = StyleSheet.create({
     scrollContent: {
@@ -203,12 +214,6 @@ const styles = StyleSheet.create({
         fontSize: 18,
         fontWeight: 'bold',
     },
-    linkButton: {
-        alignItems: 'center',
-        padding: theme.spacing.md,
-    },
-    linkButtonText: {
-        color: theme.colors.secondary,
-        paddingTop: theme.spacing.sm,
-    },
 });
+
+export default ResetPasswordScreen;

@@ -9,35 +9,55 @@ import {
     KeyboardAvoidingView,
     Platform,
     ActivityIndicator,
+    Alert,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { AntDesign } from '@expo/vector-icons';
-import { useAuth } from '../context/AuthContext';
+import { useNavigation } from '@react-navigation/native';
+import { API_URL } from '../config';
 import { theme, styles as globalStyles } from '../theme';
+import { AntDesign } from '@expo/vector-icons';
 
-export default function LoginScreen({ navigation }) {
+const ForgotPasswordScreen = () => {
     const [email, setEmail] = useState('');
-    const [password, setPassword] = useState('');
+    const [message, setMessage] = useState('');
     const [isSubmitting, setIsSubmitting] = useState(false);
-    const [error, setError] = useState('');
-    const { login } = useAuth();
+    const navigation = useNavigation();
 
-    const handleSubmit = async () => {
-        if (!email || !password) {
-            setError('Por favor, complete todos los campos');
+    const handleForgotPassword = async () => {
+        if (!email) {
+            setMessage('Por favor, complete todos los campos');
+            Alert.alert('Error', 'Por favor, complete todos los campos');
             return;
         }
 
         setIsSubmitting(true);
         try {
-            await login(email, password);
+            const response = await fetch(`${API_URL}/user/forgot-password`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({ email }),
+            });
+
+            const data = await response.json();
+
+            if (response.ok) {
+                setMessage(data.message);
+                Alert.alert('Success', data.message);
+                navigation.navigate('VerifyCode', { email: email });
+            } else {
+                setMessage(data.message);
+                Alert.alert('Error', data.message);
+            }
         } catch (error) {
-            setError(error.response?.data?.error || 'Error al iniciar sesión');
+            console.error('Error:', error);
+            setMessage('A ocurrido un error. Por favor, intente nuevamente.');
+            Alert.alert('Error', 'A ocurrido un error. Por favor, intente nuevamente.');
         } finally {
             setIsSubmitting(false);
         }
     };
-
     return (
         <SafeAreaView style={{ flex: 1, backgroundColor: theme.colors.background.dark }} edges={['bottom']}>
             <KeyboardAvoidingView
@@ -47,8 +67,8 @@ export default function LoginScreen({ navigation }) {
                 <ScrollView contentContainerStyle={styles.scrollContent}>
                     <View style={styles.formContainer}>
                         <View style={styles.header}>
-                            <Text style={styles.headerTitle}>Bienvenido</Text>
-                            <Text style={styles.headerSubtitle}>Inicia sesión para continuar</Text>
+                            <Text style={styles.headerTitle}>Has olvidado tu Contraseña</Text>
+                            <Text style={styles.headerSubtitle}>Ingresa tu email para recuperar tu contraseña</Text>
                         </View>
 
                         <View style={styles.card}>
@@ -62,7 +82,7 @@ export default function LoginScreen({ navigation }) {
                                     value={email}
                                     onChangeText={(text) => {
                                         setEmail(text);
-                                        setError('');
+                                        setMessage('');
                                     }}
                                     placeholder="Ingrese su email"
                                     placeholderTextColor={theme.colors.text.disabled}
@@ -71,59 +91,31 @@ export default function LoginScreen({ navigation }) {
                                 />
                             </View>
 
-                            <View style={styles.inputGroup}>
-                                <View style={styles.inputHeader}>
-                                    <AntDesign name="lock" size={20} color={theme.colors.secondary} />
-                                    <Text style={styles.label}>Contraseña</Text>
-                                </View>
-                                <TextInput
-                                    style={styles.input}
-                                    value={password}
-                                    onChangeText={(text) => {
-                                        setPassword(text);
-                                        setError('');
-                                    }}
-                                    placeholder="Ingrese su contraseña"
-                                    placeholderTextColor={theme.colors.text.disabled}
-                                    secureTextEntry
-                                />
-                            </View>
-
-                            {error ? (
+                            {message ? (
                                 <View style={styles.errorContainer}>
                                     <AntDesign name="exclamationcircle" size={16} color={theme.colors.danger} />
-                                    <Text style={styles.errorText}>{error}</Text>
+                                    <Text style={styles.errorText}>{message}</Text>
                                 </View>
                             ) : null}
 
                             <TouchableOpacity
                                 style={[styles.submitButton, isSubmitting && styles.submitButtonDisabled]}
-                                onPress={handleSubmit}
+                                onPress={handleForgotPassword}
                                 disabled={isSubmitting}
                             >
                                 {isSubmitting ? (
                                     <ActivityIndicator color={theme.colors.text.primary} />
                                 ) : (
-                                    <Text style={styles.submitButtonText}>Iniciar Sesión</Text>
+                                    <Text style={styles.submitButtonText}>Recuperar Contraseña</Text>
                                 )}
                             </TouchableOpacity>
-                            <TouchableOpacity
-                                style={styles.linkButton}
-                                onPress={() => navigation.navigate('ForgotPassword')}
-                            >
-                                <Text style={styles.linkButtonText}>¿Olvidaste tu contraseña?</Text>
-                            </TouchableOpacity>
                         </View>
-
-                        <TouchableOpacity style={styles.linkButton} onPress={() => navigation.navigate('Register')}>
-                            <Text style={styles.linkButtonText}>¿No tienes cuenta? Regístrate</Text>
-                        </TouchableOpacity>
                     </View>
                 </ScrollView>
             </KeyboardAvoidingView>
         </SafeAreaView>
     );
-}
+};
 
 const styles = StyleSheet.create({
     scrollContent: {
@@ -203,12 +195,6 @@ const styles = StyleSheet.create({
         fontSize: 18,
         fontWeight: 'bold',
     },
-    linkButton: {
-        alignItems: 'center',
-        padding: theme.spacing.md,
-    },
-    linkButtonText: {
-        color: theme.colors.secondary,
-        paddingTop: theme.spacing.sm,
-    },
 });
+
+export default ForgotPasswordScreen;
