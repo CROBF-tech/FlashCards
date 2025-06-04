@@ -13,7 +13,7 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation, useRoute } from '@react-navigation/native';
-import { API_URL } from '../config';
+import api from '../utils/api';
 import { theme, styles as globalStyles } from '../theme';
 import { AntDesign } from '@expo/vector-icons';
 
@@ -34,25 +34,11 @@ const VerifyCodeScreen = () => {
 
         setIsSubmitting(true);
         try {
-            const response = await fetch(`${API_URL}/user/verify-reset-code`, {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                },
-                body: JSON.stringify({ email, resetCode }),
-            });
-
-            const data = await response.json();
-
-            if (response.ok) {
-                setMessage(data.message);
-                Alert.alert('Success', data.message);
-                // Navigate to ResetPasswordScreen after successful code verification
-                navigation.navigate('ResetPassword', { email: email, resetCode: resetCode });
-            } else {
-                setMessage(data.message);
-                Alert.alert('Error', data.message);
-            }
+            const response = await api.post('/user/verify-reset-code', { email, resetCode });
+            const msg = response.data.message;
+            setMessage(msg);
+            Alert.alert('Éxito', msg);
+            navigation.navigate('ResetPassword', { email: email, resetCode: resetCode });
         } catch (error) {
             console.error('Error:', error);
             setMessage('Un error ha ocurrido. Por favor, intente nuevamente.');

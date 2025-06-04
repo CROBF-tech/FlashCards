@@ -13,7 +13,7 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation, useRoute } from '@react-navigation/native';
-import { API_URL } from '../config';
+import api from '../utils/api';
 import { theme, styles as globalStyles } from '../theme';
 import { AntDesign } from '@expo/vector-icons';
 
@@ -35,24 +35,11 @@ const ResetPasswordScreen = () => {
 
         setIsSubmitting(true);
         try {
-            const response = await fetch(`${API_URL}/user/reset-password`, {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                },
-                body: JSON.stringify({ email, resetCode, password }),
-            });
-
-            const data = await response.json();
-
-            if (response.ok) {
-                setMessage(data.message);
-                Alert.alert('Success', data.message);
-                navigation.navigate('Login');
-            } else {
-                setMessage(data.message);
-                Alert.alert('Error', data.message);
-            }
+            const response = await api.post('/user/reset-password', { email, resetCode, password });
+            const msg = response.data.message;
+            setMessage(msg);
+            Alert.alert('Éxito', msg);
+            navigation.navigate('Login');
         } catch (error) {
             console.error('Error:', error);
             setMessage('Un error a ocurrido. Por favor, intente nuevamente.');

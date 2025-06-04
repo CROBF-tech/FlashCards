@@ -27,7 +27,9 @@ api.interceptors.response.use(
             await AsyncStorage.removeItem(CONFIG.tokenStorageKey);
             // Aquí podrías disparar un evento para redirigir al usuario al login
         }
-        return Promise.reject(error);
+        // Extract the message from the error response
+        const message = error.response?.data?.message || 'A ocurrido un error. Por favor, intente nuevamente.';
+        return Promise.reject(new Error(message));
     }
 );
 
