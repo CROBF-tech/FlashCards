@@ -140,15 +140,17 @@ function AppWithNavigation() {
         async function loadFonts() {
             try {
                 await Font.loadAsync({
-                    ...AntDesign.font,
+                    anticon: require('./assets/fonts/AntDesign.ttf'),
                 });
                 console.log('Fonts loaded successfully');
                 setFontsLoaded(true);
             } catch (e) {
                 console.error('Error loading fonts:', e);
+                // En caso de error, permitimos que la app continúe
                 setFontsLoaded(true);
             }
         }
+
         loadFonts();
     }, []);
 
