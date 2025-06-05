@@ -35,7 +35,7 @@ export default function StudyScreen({ route, navigation }) {
             api.get(`/decks/${deckId}`)
                 .then((res) => {
                     const deckName = res.data.name;
-                    scheduleDeckReminders(deckId, deckName, true);
+                    scheduleDeckReminders(deckId, deckName);
                     hasScheduledRef.current = true;
                 })
                 .catch((err) => console.warn('Error al obtener nombre del mazo para notificación:', err));

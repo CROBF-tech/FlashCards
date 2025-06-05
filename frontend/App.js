@@ -53,6 +53,7 @@ const NavigationDarkTheme = {
 const screenOptions = {
     headerStyle: {
         backgroundColor: theme.colors.background.card,
+        height: 80,
     },
     headerTintColor: theme.colors.text.primary,
     headerTitleStyle: {
