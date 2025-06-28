@@ -10,6 +10,7 @@ import { Platform } from 'react-native';
 import * as Font from 'expo-font';
 import { useEffect, useState } from 'react';
 import { ActivityIndicator, View } from 'react-native';
+import { getNavigationConfig, getStatusBarConfig } from './config/navigation';
 
 import PrivacyPolicyScreen from './screens/PrivacyPolicyScreen';
 import HomeScreen from './screens/HomeScreen';
@@ -19,6 +20,7 @@ import DeckScreen from './screens/DeckScreen';
 import StudyScreen from './screens/StudyScreen';
 import AddEditDeckScreen from './screens/AddEditDeckScreen';
 import AddEditCardScreen from './screens/AddEditCardScreen';
+import ImportPdfScreen from './screens/ImportPdfScreen';
 import SearchScreen from './screens/SearchScreen';
 import StatsScreen from './screens/StatsScreen';
 import SettingsScreen from './screens/SettingsScreen';
@@ -46,23 +48,12 @@ const NavigationDarkTheme = {
         card: theme.colors.background.card,
         text: theme.colors.text.primary,
         border: theme.colors.border,
+        primary: theme.colors.primary,
     },
 };
 
 // Configuración común para las pantallas
-const screenOptions = {
-    headerStyle: {
-        backgroundColor: theme.colors.background.card,
-        height: 80,
-    },
-    headerTintColor: theme.colors.text.primary,
-    headerTitleStyle: {
-        fontWeight: 'bold',
-    },
-    contentStyle: {
-        backgroundColor: theme.colors.background.dark,
-    },
-};
+const screenOptions = getNavigationConfig();
 
 function Navigation() {
     const { isAuthenticated } = useAuth();
@@ -125,6 +116,11 @@ function Navigation() {
                             title: route.params?.card ? 'Editar Tarjeta' : 'Nueva Tarjeta',
                         })}
                     />
+                    <Stack.Screen
+                        name="ImportPdf"
+                        component={ImportPdfScreen}
+                        options={{ title: 'Importar desde PDF' }}
+                    />
                     <Stack.Screen name="Search" component={SearchScreen} options={{ title: 'Buscar' }} />
                     <Stack.Screen name="Stats" component={StatsScreen} options={{ title: 'Estadísticas' }} />
                     <Stack.Screen name="Settings" component={SettingsScreen} options={{ title: 'Configuración' }} />
@@ -167,7 +163,7 @@ function AppWithNavigation() {
         <AuthProvider>
             <SafeAreaProvider>
                 <NavigationContainer theme={NavigationDarkTheme}>
-                    <StatusBar style="light" />
+                    <StatusBar {...getStatusBarConfig()} />
                     <Navigation />
                 </NavigationContainer>
             </SafeAreaProvider>

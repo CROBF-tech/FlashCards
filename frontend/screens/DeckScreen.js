@@ -183,8 +183,6 @@ export default function DeckScreen({ route, navigation }) {
             <View style={globalStyles.container}>
                 <View style={styles.header}>
                     <View style={styles.headerContent}>
-                        <Text style={styles.deckName}>{deck?.name}</Text>
-                        {deck?.description ? <Text style={styles.deckDescription}>{deck.description}</Text> : null}
                         <View style={styles.stats}>
                             <View style={styles.statItem}>
                                 <AntDesign name="creditcard" size={20} color={theme.colors.text.secondary} />
@@ -226,6 +224,13 @@ export default function DeckScreen({ route, navigation }) {
                     </TouchableOpacity>
 
                     <TouchableOpacity
+                        style={[styles.footerButton, styles.importButton]}
+                        onPress={() => navigation.navigate('ImportPdf', { deckId, deckName: deck?.name })}
+                    >
+                        <AntDesign name="filetext1" size={20} color={theme.colors.text.primary} />
+                    </TouchableOpacity>
+
+                    <TouchableOpacity
                         style={[styles.footerButton, styles.editDeckButton]}
                         onPress={() => navigation.navigate('AddEditDeck', { deck })}
                     >
@@ -250,10 +255,12 @@ const styles = StyleSheet.create({
         backgroundColor: theme.colors.background.card,
         borderRadius: theme.borderRadius.lg,
         marginBottom: theme.spacing.md,
-        padding: theme.spacing.lg,
+        paddingVertical: theme.spacing.lg,
+        paddingHorizontal: theme.spacing.lg,
     },
     headerContent: {
-        flex: 1,
+        justifyContent: 'center',
+        alignItems: 'center',
     },
     deckName: {
         ...theme.typography.h2,
@@ -261,20 +268,25 @@ const styles = StyleSheet.create({
         marginBottom: theme.spacing.xs,
     },
     deckDescription: {
-        color: theme.colors.text.secondary,
-        marginBottom: theme.spacing.md,
+        color: theme.colors.text.primary,
+        marginBottom: theme.spacing.sm,
+        fontSize: 16,
+        textAlign: 'center',
     },
     stats: {
         flexDirection: 'row',
         alignItems: 'center',
+        justifyContent: 'center',
     },
     statItem: {
         flexDirection: 'row',
         alignItems: 'center',
     },
     statText: {
-        color: theme.colors.text.secondary,
+        color: theme.colors.text.primary,
         marginLeft: theme.spacing.xs,
+        fontSize: 16,
+        fontWeight: '500',
     },
     listContainer: {
         flexGrow: 1,
@@ -379,6 +391,9 @@ const styles = StyleSheet.create({
     },
     addButton: {
         backgroundColor: theme.colors.success,
+    },
+    importButton: {
+        backgroundColor: theme.colors.info,
     },
     editDeckButton: {
         backgroundColor: theme.colors.secondary,

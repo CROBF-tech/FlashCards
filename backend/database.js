@@ -70,6 +70,24 @@ class FlashcardsDB {
             )
         `);
 
+        // Crear tabla para importaciones de PDF
+        await this.client.execute(`
+            CREATE TABLE IF NOT EXISTS pdf_imports (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                user_id INTEGER NOT NULL,
+                deck_id INTEGER NOT NULL,
+                file_name TEXT NOT NULL,
+                original_name TEXT NOT NULL,
+                status TEXT DEFAULT 'processing',
+                error_message TEXT,
+                cards_generated INTEGER DEFAULT 0,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
+                FOREIGN KEY (deck_id) REFERENCES decks(id) ON DELETE CASCADE
+            )
+        `);
+
         // Crear índices
         await this.client.execute(`
             CREATE INDEX IF NOT EXISTS idx_cards_deck_id ON cards(deck_id)
@@ -85,6 +103,14 @@ class FlashcardsDB {
 
         await this.client.execute(`
             CREATE INDEX IF NOT EXISTS idx_decks_user_id ON decks(user_id)
+        `);
+
+        await this.client.execute(`
+            CREATE INDEX IF NOT EXISTS idx_pdf_imports_user_id ON pdf_imports(user_id)
+        `);
+
+        await this.client.execute(`
+            CREATE INDEX IF NOT EXISTS idx_pdf_imports_deck_id ON pdf_imports(deck_id)
         `);
     }
 
@@ -453,6 +479,84 @@ class FlashcardsDB {
             return result.rowsAffected > 0;
         } catch (error) {
             console.error('Error al eliminar usuario:', error);
+            throw error;
+        }
+    }
+
+    // Métodos para manejo de PDFs y generación de flashcards
+    async createPdfImport(userId, deckId, fileName, originalName, status = 'processing') {
+        try {
+            const result = await this.client.execute({
+                sql: `INSERT INTO pdf_imports (user_id, deck_id, file_name, original_name, status, created_at) 
+                      VALUES (?, ?, ?, ?, ?, CURRENT_TIMESTAMP) RETURNING id`,
+                args: [userId, deckId, fileName, originalName, status],
+            });
+            return result.rows[0].id;
+        } catch (error) {
+            console.error('Error al crear registro de importación PDF:', error);
+            throw error;
+        }
+    }
+
+    async updatePdfImportStatus(importId, status, errorMessage = null) {
+        try {
+            const result = await this.client.execute({
+                sql: `UPDATE pdf_imports SET status = ?, error_message = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?`,
+                args: [status, errorMessage, importId],
+            });
+            return result.rowsAffected > 0;
+        } catch (error) {
+            console.error('Error al actualizar estado de importación PDF:', error);
+            throw error;
+        }
+    }
+
+    async getPdfImportsByUser(userId) {
+        try {
+            const result = await this.client.execute({
+                sql: `SELECT pi.*, d.name as deck_name 
+                      FROM pdf_imports pi 
+                      LEFT JOIN decks d ON pi.deck_id = d.id 
+                      WHERE pi.user_id = ? 
+                      ORDER BY pi.created_at DESC`,
+                args: [userId],
+            });
+            return result.rows;
+        } catch (error) {
+            console.error('Error al obtener importaciones PDF del usuario:', error);
+            throw error;
+        }
+    }
+
+    async createBulkCards(deckId, cards) {
+        try {
+            const results = [];
+            for (const card of cards) {
+                const result = await this.client.execute({
+                    sql: `INSERT INTO cards (deck_id, front, back, tags, created_at, updated_at) 
+                          VALUES (?, ?, ?, ?, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP) RETURNING id`,
+                    args: [deckId, card.front, card.back, JSON.stringify(card.tags || [])],
+                });
+                results.push(result.rows[0].id);
+            }
+            return results;
+        } catch (error) {
+            console.error('Error al crear tarjetas en lote:', error);
+            throw error;
+        }
+    }
+
+    async getCard(cardId, userId) {
+        try {
+            const result = await this.client.execute({
+                sql: `SELECT c.* FROM cards c 
+                      JOIN decks d ON c.deck_id = d.id 
+                      WHERE c.id = ? AND d.user_id = ?`,
+                args: [cardId, userId],
+            });
+            return result.rows[0] || null;
+        } catch (error) {
+            console.error('Error al obtener tarjeta:', error);
             throw error;
         }
     }

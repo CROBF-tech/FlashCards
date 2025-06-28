@@ -6,6 +6,7 @@ export const theme = {
         success: '#4CAF50', // Verde
         danger: '#FF5252', // Rojo
         warning: '#FFB74D', // Naranja
+        info: '#2196F3', // Azul info
         background: {
             dark: '#121212', // Fondo principal
             card: '#1E1E1E', // Fondo de tarjetas
@@ -18,6 +19,9 @@ export const theme = {
         },
         border: '#333333', // Bordes
         divider: '#2A2A2A', // Divisores
+        surface: '#2A2A2A', // Superficie
+        textSecondary: '#B3B3B3', // Alias para compatibilidad
+        primaryLight: '#A478DF', // Variante clara del primario
     },
     spacing: {
         xs: 4,

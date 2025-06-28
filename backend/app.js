@@ -6,6 +6,7 @@ import { config } from 'dotenv';
 import db from './database.js';
 import auth from './middleware/auth.js';
 import userRoutes from './routes/user.js';
+import pdfRoutes from './routes/pdf.js';
 
 config();
 
@@ -18,6 +19,7 @@ app.use(express.json());
 
 // Rutas
 app.use('/user', userRoutes);
+app.use('/pdf', pdfRoutes);
 
 // Rutas de autenticación
 app.post('/auth/register', async (req, res) => {

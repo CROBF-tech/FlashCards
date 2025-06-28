@@ -15,14 +15,22 @@
         "assetBundlePatterns": ["**/*"],
         "ios": {
             "supportsTablet": true,
-            "bundleIdentifier": "tech.crobf.flashcards"
+            "bundleIdentifier": "tech.crobf.flashcards",
+            "infoPlist": {
+                "UIViewControllerBasedStatusBarAppearance": false,
+                "UIStatusBarStyle": "UIStatusBarStyleLightContent"
+            }
         },
         "android": {
             "adaptiveIcon": {
                 "foregroundImage": "./assets/icon.png",
                 "backgroundColor": "#ffffff"
             },
-            "package": "tech.crobf.flashcards"
+            "package": "tech.crobf.flashcards",
+            "statusBar": {
+                "barStyle": "light-content",
+                "backgroundColor": "#1a1a1a"
+            }
         },
         "web": {
             "favicon": "./assets/icon.png",
