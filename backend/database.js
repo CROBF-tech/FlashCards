@@ -394,12 +394,12 @@ class FlashcardsDB {
     }
 
     // Métodos para manejo de PDFs y generación de flashcards
-    async createPdfImport(userId, deckId, fileName, originalName, status = 'processing') {
+    async createPdfImport(userId, deckId, originalName, status = 'processing') {
         try {
             const result = await this.client.execute({
                 sql: `INSERT INTO pdf_imports (user_id, deck_id, file_name, original_name, status, created_at) 
                       VALUES (?, ?, ?, ?, ?, CURRENT_TIMESTAMP) RETURNING id`,
-                args: [userId, deckId, fileName, originalName, status],
+                args: [userId, deckId, null, originalName, status], // file_name como null porque no guardamos archivos
             });
             return result.rows[0].id;
         } catch (error) {
