@@ -6,7 +6,16 @@
     "main": "api/index.js",
     "scripts": {
         "start": "node api/index.js",
-        "dev": "nodemon api/index.js"
+        "dev": "nodemon api/index.js",
+        "build": "echo 'No build step required for serverless deployment'",
+        "vercel-build": "echo 'Building for Vercel deployment'",
+        "deploy": "vercel --prod",
+        "deploy-preview": "vercel",
+        "test": "echo 'No tests specified yet'",
+        "lint": "echo 'No linting configured yet'"
+    },
+    "engines": {
+        "node": ">=18.0.0"
     },
     "dependencies": {
         "@google/generative-ai": "^0.21.0",
