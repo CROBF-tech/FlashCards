@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
     View,
     Text,
@@ -9,18 +9,29 @@ import {
     KeyboardAvoidingView,
     Platform,
     ActivityIndicator,
+    Modal,
+    Linking,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { AntDesign } from '@expo/vector-icons';
 import { useAuth } from '../context/AuthContext';
 import { theme, styles as globalStyles } from '../theme';
+import { isMobile } from 'react-device-detect';
 
 export default function LoginScreen({ navigation }) {
     const [email, setEmail] = useState('');
     const [password, setPassword] = useState('');
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [error, setError] = useState('');
+    const [showAppModal, setShowAppModal] = useState(false);
     const { login } = useAuth();
+
+    useEffect(() => {
+        // Mostrar el modal solo en dispositivos móviles
+        if (isMobile && Platform.OS === 'web') {
+            setShowAppModal(true);
+        }
+    }, []);
 
     const handleSubmit = async () => {
         if (!email || !password) {
@@ -36,6 +47,10 @@ export default function LoginScreen({ navigation }) {
         } finally {
             setIsSubmitting(false);
         }
+    };
+
+    const openPlayStore = () => {
+        Linking.openURL('https://play.google.com/store/apps/details?id=tech.crobf.flashcards');
     };
 
     return (
@@ -121,6 +136,43 @@ export default function LoginScreen({ navigation }) {
                     </View>
                 </ScrollView>
             </KeyboardAvoidingView>
+
+            {/* Modal para recomendar la app */}
+            <Modal
+                animationType="slide"
+                transparent={true}
+                visible={showAppModal}
+                onRequestClose={() => setShowAppModal(false)}
+            >
+                <View style={styles.modalOverlay}>
+                    <View style={styles.modalContent}>
+                        <View style={styles.modalHeader}>
+                            <Text style={styles.modalTitle}>¡Descarga nuestra app!</Text>
+                            <TouchableOpacity style={styles.closeButton} onPress={() => setShowAppModal(false)}>
+                                <AntDesign name="close" size={24} color={theme.colors.text.primary} />
+                            </TouchableOpacity>
+                        </View>
+                        <Text style={styles.modalText}>
+                            Disfruta de una mejor experiencia descargando nuestra aplicación móvil desde Google Play
+                            Store.
+                        </Text>
+                        <View style={styles.modalButtons}>
+                            <TouchableOpacity
+                                style={[styles.modalButton, styles.downloadButton]}
+                                onPress={openPlayStore}
+                            >
+                                <Text style={styles.downloadButtonText}>Descargar App</Text>
+                            </TouchableOpacity>
+                            <TouchableOpacity
+                                style={[styles.modalButton, styles.cancelButton]}
+                                onPress={() => setShowAppModal(false)}
+                            >
+                                <Text style={styles.cancelButtonText}>Más tarde</Text>
+                            </TouchableOpacity>
+                        </View>
+                    </View>
+                </View>
+            </Modal>
         </SafeAreaView>
     );
 }
@@ -210,5 +262,63 @@ const styles = StyleSheet.create({
     linkButtonText: {
         color: theme.colors.secondary,
         paddingTop: theme.spacing.sm,
+    },
+    modalOverlay: {
+        flex: 1,
+        backgroundColor: 'rgba(0, 0, 0, 0.5)',
+        justifyContent: 'center',
+        alignItems: 'center',
+        padding: 20,
+    },
+    modalContent: {
+        width: '100%',
+        maxWidth: 400,
+        backgroundColor: theme.colors.background.card,
+        borderRadius: theme.borderRadius.lg,
+        padding: theme.spacing.lg,
+    },
+    modalHeader: {
+        flexDirection: 'row',
+        justifyContent: 'space-between',
+        alignItems: 'center',
+        marginBottom: theme.spacing.md,
+    },
+    modalTitle: {
+        ...theme.typography.h3,
+        color: theme.colors.text.primary,
+    },
+    closeButton: {
+        padding: 5,
+    },
+    modalText: {
+        color: theme.colors.text.secondary,
+        fontSize: 16,
+        marginBottom: theme.spacing.lg,
+        lineHeight: 24,
+    },
+    modalButtons: {
+        flexDirection: 'column',
+        gap: theme.spacing.sm,
+    },
+    modalButton: {
+        padding: theme.spacing.md,
+        borderRadius: theme.borderRadius.md,
+        alignItems: 'center',
+        justifyContent: 'center',
+    },
+    downloadButton: {
+        backgroundColor: theme.colors.primary,
+    },
+    cancelButton: {
+        backgroundColor: 'transparent',
+    },
+    downloadButtonText: {
+        color: theme.colors.text.primary,
+        fontWeight: 'bold',
+        fontSize: 16,
+    },
+    cancelButtonText: {
+        color: theme.colors.text.secondary,
+        fontSize: 16,
     },
 });
