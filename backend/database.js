@@ -5,11 +5,25 @@ config();
 
 class FlashcardsDB {
     constructor() {
-        this.client = createClient({
-            url: process.env.TURSO_DATABASE_URL,
-            authToken: process.env.TURSO_AUTH_TOKEN,
-        });
-        this.initDB();
+        try {
+            // Verificar que las variables de entorno estén configuradas
+            if (!process.env.TURSO_DATABASE_URL || !process.env.TURSO_AUTH_TOKEN) {
+                console.error('Variables de entorno de base de datos no configuradas');
+                throw new Error('Database configuration missing');
+            }
+
+            this.client = createClient({
+                url: process.env.TURSO_DATABASE_URL,
+                authToken: process.env.TURSO_AUTH_TOKEN,
+            });
+
+            this.initDB().catch((err) => {
+                console.error('Error inicializando base de datos:', err);
+            });
+        } catch (error) {
+            console.error('Error creating database client:', error);
+            throw error;
+        }
     }
 
     async initDB() {

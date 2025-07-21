@@ -17,6 +17,24 @@ const port = process.env.PORT || 8000;
 app.use(cors());
 app.use(express.json());
 
+// Ruta raíz para verificar que el servidor funciona
+app.get('/', (req, res) => {
+    res.json({
+        message: 'FlashCards API is running',
+        status: 'OK',
+        timestamp: new Date().toISOString(),
+    });
+});
+
+// Health check endpoint
+app.get('/health', (req, res) => {
+    res.json({
+        status: 'healthy',
+        uptime: process.uptime(),
+        timestamp: new Date().toISOString(),
+    });
+});
+
 // Rutas
 app.use('/user', userRoutes);
 app.use('/pdf', pdfRoutes);
@@ -29,6 +47,12 @@ app.post('/auth/register', async (req, res) => {
         // Validar campos requeridos
         if (!username || !email || !password) {
             return res.status(400).json({ error: 'Todos los campos son requeridos' });
+        }
+
+        // Verificar que JWT_SECRET esté configurado
+        if (!process.env.JWT_SECRET) {
+            console.error('JWT_SECRET no está configurado');
+            return res.status(500).json({ error: 'Configuración del servidor incompleta' });
         }
 
         // Hash de la contraseña
@@ -62,6 +86,12 @@ app.post('/auth/login', async (req, res) => {
         // Validar campos requeridos
         if (!email || !password) {
             return res.status(400).json({ error: 'Todos los campos son requeridos' });
+        }
+
+        // Verificar que JWT_SECRET esté configurado
+        if (!process.env.JWT_SECRET) {
+            console.error('JWT_SECRET no está configurado');
+            return res.status(500).json({ error: 'Configuración del servidor incompleta' });
         }
 
         // Buscar usuario
@@ -370,8 +400,29 @@ app.get('/stats', auth, async (req, res) => {
     }
 });
 
-app.listen(port, () => {
-    console.log(`Servidor corriendo en http://localhost:${port}`);
+// Middleware de manejo de errores
+app.use((err, req, res, next) => {
+    console.error('Error stack:', err.stack);
+    res.status(500).json({
+        error: 'Error interno del servidor',
+        message: process.env.NODE_ENV === 'development' ? err.message : 'Algo salió mal',
+    });
 });
+
+// Middleware para rutas no encontradas
+app.use('*', (req, res) => {
+    res.status(404).json({
+        error: 'Ruta no encontrada',
+        path: req.originalUrl,
+        method: req.method,
+    });
+});
+
+// Solo iniciar el servidor si no estamos en Vercel
+if (process.env.NODE_ENV !== 'production') {
+    app.listen(port, () => {
+        console.log(`Servidor corriendo en http://localhost:${port}`);
+    });
+}
 
 export default app;
