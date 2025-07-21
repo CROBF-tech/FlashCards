@@ -7,7 +7,7 @@ dotenv.config();
 
 const router = express.Router();
 import User from '../models/User.js';
-import bcrypt from 'bcryptjs';
+import bcrypt from 'bcrypt';
 
 // Ruta para obtener las estadísticas del usuario
 router.get('/stats', auth, async (req, res) => {
