@@ -2,21 +2,7 @@ import express from 'express';
 import cors from 'cors';
 import bcrypt from 'bcryptjs';
 import jwt from 'jsonwebtoken';
-import { config } from 'dotenv';
 import { createClient } from '@libsql/client';
-import auth from '../middleware/auth.js';
-
-// Cargar variables de entorno
-config();
-
-// Validar variables de entorno críticas
-if (!process.env.JWT_SECRET) {
-    console.error('JWT_SECRET no está configurado');
-}
-
-if (!process.env.TURSO_DATABASE_URL || !process.env.TURSO_AUTH_TOKEN) {
-    console.error('Variables de base de datos no configuradas');
-}
 
 const app = express();
 
@@ -29,11 +15,29 @@ app.use(
 );
 app.use(express.json({ limit: '10mb' }));
 
-// Configuración de base de datos
-const dbClient = createClient({
-    url: process.env.TURSO_DATABASE_URL,
-    authToken: process.env.TURSO_AUTH_TOKEN,
-});
+// Middleware de autenticación inline
+function auth(req, res, next) {
+    const token = req.header('x-auth-token');
+    if (!token) {
+        return res.status(401).json({ error: 'Acceso denegado. No hay token proporcionado.' });
+    }
+    try {
+        const decoded = jwt.verify(token, process.env.JWT_SECRET);
+        req.user = decoded;
+        next();
+    } catch (error) {
+        res.status(401).json({ error: 'Token inválido.' });
+    }
+}
+
+// Configuración de base de datos (solo si las variables existen)
+let dbClient = null;
+if (process.env.TURSO_DATABASE_URL && process.env.TURSO_AUTH_TOKEN) {
+    dbClient = createClient({
+        url: process.env.TURSO_DATABASE_URL,
+        authToken: process.env.TURSO_AUTH_TOKEN,
+    });
+}
 
 // Función de utilidad para calcular SM2
 function calculateSM2(quality, repetitions, easeFactor, interval) {
@@ -82,6 +86,15 @@ app.get('/', (req, res) => {
 // Ruta de health check
 app.get('/health', async (req, res) => {
     try {
+        if (!dbClient) {
+            return res.status(500).json({
+                status: 'error',
+                database: 'not_configured',
+                error: 'Variables de base de datos no configuradas',
+                timestamp: new Date().toISOString(),
+            });
+        }
+
         // Probar conexión a la base de datos
         await dbClient.execute('SELECT 1');
         res.json({
@@ -103,10 +116,18 @@ app.get('/health', async (req, res) => {
 // Rutas de autenticación
 app.post('/auth/register', async (req, res) => {
     try {
+        if (!dbClient) {
+            return res.status(500).json({ error: 'Base de datos no configurada' });
+        }
+
         const { username, email, password } = req.body;
 
         if (!username || !email || !password) {
             return res.status(400).json({ error: 'Todos los campos son requeridos' });
+        }
+
+        if (!process.env.JWT_SECRET) {
+            return res.status(500).json({ error: 'JWT_SECRET no configurado' });
         }
 
         const salt = await bcrypt.genSalt(10);
@@ -132,10 +153,18 @@ app.post('/auth/register', async (req, res) => {
 
 app.post('/auth/login', async (req, res) => {
     try {
+        if (!dbClient) {
+            return res.status(500).json({ error: 'Base de datos no configurada' });
+        }
+
         const { email, password } = req.body;
 
         if (!email || !password) {
             return res.status(400).json({ error: 'Todos los campos son requeridos' });
+        }
+
+        if (!process.env.JWT_SECRET) {
+            return res.status(500).json({ error: 'JWT_SECRET no configurado' });
         }
 
         const result = await dbClient.execute({
