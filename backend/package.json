@@ -3,10 +3,10 @@
     "version": "1.0.0",
     "description": "Backend para la aplicación FlashCards",
     "type": "module",
-    "main": "app.js",
+    "main": "api/index.js",
     "scripts": {
-        "start": "node app.js",
-        "dev": "nodemon app.js"
+        "start": "node api/index.js",
+        "dev": "nodemon api/index.js"
     },
     "dependencies": {
         "@google/generative-ai": "^0.21.0",
