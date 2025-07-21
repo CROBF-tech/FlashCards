@@ -11,9 +11,17 @@ import pdfRoutes from '../routes/pdf.js';
 dotenv.config();
 
 // Validar variables de entorno críticas
-if (!process.env.JWT_SECRET) {
-    console.error('JWT_SECRET no está configurado');
-    process.exit(1);
+const requiredEnvVars = ['JWT_SECRET', 'TURSO_DATABASE_URL', 'TURSO_AUTH_TOKEN'];
+const missingEnvVars = requiredEnvVars.filter((envVar) => !process.env[envVar]);
+
+if (missingEnvVars.length > 0) {
+    console.error('Variables de entorno faltantes:', missingEnvVars);
+    if (process.env.NODE_ENV === 'production') {
+        console.error('La aplicación no puede iniciarse sin estas variables.');
+        // En producción no salimos, pero logueamos el error
+    } else {
+        process.exit(1);
+    }
 }
 
 const app = express();
@@ -33,12 +41,33 @@ app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ extended: true, limit: '10mb' }));
 
 // Health check endpoint
-app.get('/health', (req, res) => {
-    res.status(200).json({
-        status: 'OK',
-        timestamp: new Date().toISOString(),
-        environment: process.env.NODE_ENV || 'development',
-    });
+app.get('/health', async (req, res) => {
+    try {
+        // Verificar variables de entorno
+        const envStatus = {
+            JWT_SECRET: !!process.env.JWT_SECRET,
+            TURSO_DATABASE_URL: !!process.env.TURSO_DATABASE_URL,
+            TURSO_AUTH_TOKEN: !!process.env.TURSO_AUTH_TOKEN,
+        };
+
+        // Verificar conexión de base de datos
+        await db.ensureInitialized();
+
+        res.status(200).json({
+            status: 'OK',
+            timestamp: new Date().toISOString(),
+            environment: process.env.NODE_ENV || 'development',
+            database: 'connected',
+            env: envStatus,
+        });
+    } catch (error) {
+        console.error('Health check failed:', error);
+        res.status(500).json({
+            status: 'ERROR',
+            timestamp: new Date().toISOString(),
+            error: error.message,
+        });
+    }
 });
 
 // Rutas
@@ -397,9 +426,11 @@ app.get('/stats', auth, async (req, res) => {
 // Middleware de manejo de errores global
 app.use((error, req, res, next) => {
     console.error('Error no manejado:', error);
+    console.error('Stack trace:', error.stack);
     res.status(500).json({
         error: 'Error interno del servidor',
         message: process.env.NODE_ENV === 'development' ? error.message : 'Algo salió mal',
+        timestamp: new Date().toISOString(),
     });
 });
 

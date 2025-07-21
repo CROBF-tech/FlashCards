@@ -5,23 +5,39 @@ config();
 
 class GeminiService {
     constructor() {
+        this.isConfigured = false;
+        this.genAI = null;
+        this.model = null;
+
         if (!process.env.GEMINI_API_KEY) {
-            throw new Error('GEMINI_API_KEY is required in environment variables');
+            console.warn('GEMINI_API_KEY no está configurado. El servicio de Gemini estará deshabilitado.');
+            return;
         }
 
-        this.genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
-        this.model = this.genAI.getGenerativeModel({
-            model: 'gemini-2.0-flash-exp',
-            generationConfig: {
-                temperature: 0.7,
-                topK: 40,
-                topP: 0.95,
-                maxOutputTokens: 8192,
-            },
-        });
+        try {
+            this.genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
+            this.model = this.genAI.getGenerativeModel({
+                model: 'gemini-2.0-flash-exp',
+                generationConfig: {
+                    temperature: 0.7,
+                    topK: 40,
+                    topP: 0.95,
+                    maxOutputTokens: 8192,
+                },
+            });
+            this.isConfigured = true;
+        } catch (error) {
+            console.error('Error al configurar Gemini:', error);
+        }
     }
 
     async generateFlashcardsFromText(text, options = {}) {
+        if (!this.isConfigured) {
+            throw new Error(
+                'Servicio Gemini no está configurado. Verifique que GEMINI_API_KEY esté configurado correctamente.'
+            );
+        }
+
         const { cardCount = 10, difficulty = 'medium', language = 'es', focus = 'general' } = options;
 
         // Configuración específica para cada nivel de dificultad
@@ -152,6 +168,12 @@ IMPORTANTE: Responde ÚNICAMENTE con el JSON válido, sin texto adicional antes 
     }
 
     async enhanceFlashcard(front, back) {
+        if (!this.isConfigured) {
+            throw new Error(
+                'Servicio Gemini no está configurado. Verifique que GEMINI_API_KEY esté configurado correctamente.'
+            );
+        }
+
         const prompt = `
 Mejora esta flashcard manteniendo su contenido principal pero haciéndola más clara y educativa:
 

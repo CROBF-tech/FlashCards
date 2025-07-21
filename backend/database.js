@@ -8,7 +8,17 @@ class FlashcardsDB {
             url: process.env.TURSO_DATABASE_URL,
             authToken: process.env.TURSO_AUTH_TOKEN,
         });
-        this.initDB();
+        this.initialized = false;
+        this.initPromise = null;
+    }
+
+    async ensureInitialized() {
+        if (!this.initialized && !this.initPromise) {
+            this.initPromise = this.initDB();
+        }
+        if (this.initPromise) {
+            await this.initPromise;
+        }
     }
 
     async initDB() {
@@ -111,10 +121,14 @@ class FlashcardsDB {
         await this.client.execute(`
             CREATE INDEX IF NOT EXISTS idx_pdf_imports_deck_id ON pdf_imports(deck_id)
         `);
+
+        this.initialized = true;
+        this.initPromise = null;
     }
 
     // Métodos de autenticación
     async createUser(username, email, password) {
+        await this.ensureInitialized();
         try {
             const result = await this.client.execute({
                 sql: 'INSERT INTO users (username, email, password) VALUES (?, ?, ?) RETURNING id',
@@ -130,6 +144,7 @@ class FlashcardsDB {
     }
 
     async getUserByEmail(email) {
+        await this.ensureInitialized();
         const result = await this.client.execute({
             sql: 'SELECT *, resetPasswordToken, resetPasswordExpires FROM users WHERE email = ?',
             args: [email],
@@ -138,6 +153,7 @@ class FlashcardsDB {
     }
 
     async updateUserResetToken(email, resetPasswordToken, resetPasswordExpires) {
+        await this.ensureInitialized();
         const result = await this.client.execute({
             sql: 'UPDATE users SET resetPasswordToken = ?, resetPasswordExpires = ? WHERE email = ?',
             args: [resetPasswordToken, resetPasswordExpires, email],
@@ -146,6 +162,7 @@ class FlashcardsDB {
     }
 
     async updateUserPassword(email, hashedPassword) {
+        await this.ensureInitialized();
         const result = await this.client.execute({
             sql: 'UPDATE users SET password = ? WHERE email = ?',
             args: [hashedPassword, email],
@@ -154,6 +171,7 @@ class FlashcardsDB {
     }
 
     async getUserById(id) {
+        await this.ensureInitialized();
         const result = await this.client.execute({
             sql: 'SELECT id, username, email, created_at FROM users WHERE id = ?',
             args: [id],
@@ -163,6 +181,7 @@ class FlashcardsDB {
 
     // Métodos para mazos (actualizados para usuarios)
     async getDeck(deckId, userId) {
+        await this.ensureInitialized();
         try {
             const result = await this.client.execute({
                 sql: 'SELECT id, name, description, created_at FROM decks WHERE id = ? AND user_id = ?',
@@ -176,6 +195,7 @@ class FlashcardsDB {
     }
 
     async getAllDecks(userId) {
+        await this.ensureInitialized();
         const result = await this.client.execute({
             sql: 'SELECT id, name, description, created_at FROM decks WHERE user_id = ? ORDER BY name',
             args: [userId],
@@ -184,6 +204,7 @@ class FlashcardsDB {
     }
 
     async createDeck(name, description = '', userId) {
+        await this.ensureInitialized();
         const result = await this.client.execute({
             sql: 'INSERT INTO decks (name, description, user_id) VALUES (?, ?, ?) RETURNING id',
             args: [name, description, userId],
