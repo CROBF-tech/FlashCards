@@ -2,13 +2,13 @@ import express from 'express';
 import cors from 'cors';
 import bcrypt from 'bcryptjs';
 import jwt from 'jsonwebtoken';
-import { config } from 'dotenv';
+import dotenv from 'dotenv';
 import db from '../database.js';
 import auth from '../middleware/auth.js';
 import userRoutes from '../routes/user.js';
 import pdfRoutes from '../routes/pdf.js';
 
-config();
+dotenv.config();
 
 // Validar variables de entorno críticas
 if (!process.env.JWT_SECRET) {
