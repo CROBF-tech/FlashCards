@@ -6,7 +6,8 @@
     "main": "app.js",
     "scripts": {
         "start": "node app.js",
-        "dev": "nodemon app.js"
+        "dev": "nodemon app.js",
+        "tables": "node scripts/createTables.js"
     },
     "dependencies": {
         "@google/generative-ai": "^0.21.0",

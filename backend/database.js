@@ -17,115 +17,11 @@ class FlashcardsDB {
                 authToken: process.env.TURSO_AUTH_TOKEN,
             });
 
-            this.initDB().catch((err) => {
-                console.error('Error inicializando base de datos:', err);
-            });
+            console.log('🔗 Conectado a la base de datos');
         } catch (error) {
             console.error('Error creating database client:', error);
             throw error;
         }
-    }
-
-    async initDB() {
-        // Crear tabla users
-        await this.client.execute(`
-            CREATE TABLE IF NOT EXISTS users (
-                id INTEGER PRIMARY KEY AUTOINCREMENT,
-                username TEXT NOT NULL UNIQUE,
-                email TEXT NOT NULL UNIQUE,
-                password TEXT NOT NULL,
-                resetPasswordToken TEXT,
-                resetPasswordExpires TIMESTAMP,
-                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-            )
-        `);
-
-        // Crear tabla decks con referencia a users
-        await this.client.execute(`
-            CREATE TABLE IF NOT EXISTS decks (
-                id INTEGER PRIMARY KEY AUTOINCREMENT,
-                user_id INTEGER NOT NULL,
-                name TEXT NOT NULL,
-                description TEXT,
-                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-                updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-                FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
-            )
-        `);
-
-        // Crear tabla cards
-        await this.client.execute(`
-            CREATE TABLE IF NOT EXISTS cards (
-                id INTEGER PRIMARY KEY AUTOINCREMENT,
-                deck_id INTEGER NOT NULL,
-                front TEXT NOT NULL,
-                back TEXT NOT NULL,
-                tags TEXT DEFAULT '[]',
-                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-                updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-                interval INTEGER DEFAULT 0,
-                ease_factor REAL DEFAULT 2.5,
-                repetitions INTEGER DEFAULT 0,
-                due_date DATE DEFAULT CURRENT_DATE,
-                FOREIGN KEY (deck_id) REFERENCES decks(id) ON DELETE CASCADE
-            )
-        `);
-
-        // Crear tabla reviews
-        await this.client.execute(`
-            CREATE TABLE IF NOT EXISTS reviews (
-                id INTEGER PRIMARY KEY AUTOINCREMENT,
-                card_id INTEGER NOT NULL,
-                user_id INTEGER NOT NULL,
-                quality INTEGER NOT NULL,
-                timestamp TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-                FOREIGN KEY (card_id) REFERENCES cards(id) ON DELETE CASCADE,
-                FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
-            )
-        `);
-
-        // Crear tabla para importaciones de PDF
-        await this.client.execute(`
-            CREATE TABLE IF NOT EXISTS pdf_imports (
-                id INTEGER PRIMARY KEY AUTOINCREMENT,
-                user_id INTEGER NOT NULL,
-                deck_id INTEGER NOT NULL,
-                file_name TEXT NOT NULL,
-                original_name TEXT NOT NULL,
-                status TEXT DEFAULT 'processing',
-                error_message TEXT,
-                cards_generated INTEGER DEFAULT 0,
-                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-                updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-                FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
-                FOREIGN KEY (deck_id) REFERENCES decks(id) ON DELETE CASCADE
-            )
-        `);
-
-        // Crear índices
-        await this.client.execute(`
-            CREATE INDEX IF NOT EXISTS idx_cards_deck_id ON cards(deck_id)
-        `);
-
-        await this.client.execute(`
-            CREATE INDEX IF NOT EXISTS idx_cards_due_date ON cards(due_date)
-        `);
-
-        await this.client.execute(`
-            CREATE INDEX IF NOT EXISTS idx_reviews_card_id ON reviews(card_id)
-        `);
-
-        await this.client.execute(`
-            CREATE INDEX IF NOT EXISTS idx_decks_user_id ON decks(user_id)
-        `);
-
-        await this.client.execute(`
-            CREATE INDEX IF NOT EXISTS idx_pdf_imports_user_id ON pdf_imports(user_id)
-        `);
-
-        await this.client.execute(`
-            CREATE INDEX IF NOT EXISTS idx_pdf_imports_deck_id ON pdf_imports(deck_id)
-        `);
     }
 
     // Métodos de autenticación
