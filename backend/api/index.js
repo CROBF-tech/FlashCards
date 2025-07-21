@@ -5,7 +5,7 @@ import jwt from 'jsonwebtoken';
 import { createClient } from '@libsql/client';
 
 const app = express();
-
+const port = process.env.PORT || 8000;
 // Middleware
 app.use(
     cors({
