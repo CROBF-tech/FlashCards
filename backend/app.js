@@ -10,6 +10,12 @@ import pdfRoutes from './routes/pdf.js';
 
 config();
 
+// Validar variables de entorno críticas
+if (!process.env.JWT_SECRET) {
+    console.error('JWT_SECRET no está configurado');
+    process.exit(1);
+}
+
 const app = express();
 const port = process.env.PORT || 8000;
 
@@ -368,6 +374,20 @@ app.get('/stats', auth, async (req, res) => {
         console.error('Error al obtener estadísticas:', error);
         res.status(500).json({ error: 'Error interno del servidor' });
     }
+});
+
+// Middleware de manejo de errores global
+app.use((error, req, res, next) => {
+    console.error('Error no manejado:', error);
+    res.status(500).json({
+        error: 'Error interno del servidor',
+        message: process.env.NODE_ENV === 'development' ? error.message : 'Algo salió mal',
+    });
+});
+
+// Middleware para rutas no encontradas
+app.use('*', (req, res) => {
+    res.status(404).json({ error: 'Ruta no encontrada' });
 });
 
 app.listen(port, () => {

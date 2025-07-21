@@ -5,16 +5,24 @@ config();
 
 class FlashcardsDB {
     constructor() {
+        // Validar variables de entorno
+        if (!process.env.TURSO_DATABASE_URL || !process.env.TURSO_AUTH_TOKEN) {
+            throw new Error('Variables de entorno TURSO_DATABASE_URL y TURSO_AUTH_TOKEN son requeridas');
+        }
+
         this.client = createClient({
             url: process.env.TURSO_DATABASE_URL,
             authToken: process.env.TURSO_AUTH_TOKEN,
         });
-        this.initDB();
+        this.initDB().catch((error) => {
+            console.error('Error inicializando base de datos:', error);
+        });
     }
 
     async initDB() {
-        // Crear tabla users
-        await this.client.execute(`
+        try {
+            // Crear tabla users
+            await this.client.execute(`
             CREATE TABLE IF NOT EXISTS users (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
                 username TEXT NOT NULL UNIQUE,
@@ -26,8 +34,8 @@ class FlashcardsDB {
             )
         `);
 
-        // Crear tabla decks con referencia a users
-        await this.client.execute(`
+            // Crear tabla decks con referencia a users
+            await this.client.execute(`
             CREATE TABLE IF NOT EXISTS decks (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
                 user_id INTEGER NOT NULL,
@@ -39,8 +47,8 @@ class FlashcardsDB {
             )
         `);
 
-        // Crear tabla cards
-        await this.client.execute(`
+            // Crear tabla cards
+            await this.client.execute(`
             CREATE TABLE IF NOT EXISTS cards (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
                 deck_id INTEGER NOT NULL,
@@ -57,8 +65,8 @@ class FlashcardsDB {
             )
         `);
 
-        // Crear tabla reviews
-        await this.client.execute(`
+            // Crear tabla reviews
+            await this.client.execute(`
             CREATE TABLE IF NOT EXISTS reviews (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
                 card_id INTEGER NOT NULL,
@@ -70,8 +78,8 @@ class FlashcardsDB {
             )
         `);
 
-        // Crear tabla para importaciones de PDF
-        await this.client.execute(`
+            // Crear tabla para importaciones de PDF
+            await this.client.execute(`
             CREATE TABLE IF NOT EXISTS pdf_imports (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
                 user_id INTEGER NOT NULL,
@@ -88,30 +96,34 @@ class FlashcardsDB {
             )
         `);
 
-        // Crear índices
-        await this.client.execute(`
+            // Crear índices
+            await this.client.execute(`
             CREATE INDEX IF NOT EXISTS idx_cards_deck_id ON cards(deck_id)
         `);
 
-        await this.client.execute(`
+            await this.client.execute(`
             CREATE INDEX IF NOT EXISTS idx_cards_due_date ON cards(due_date)
         `);
 
-        await this.client.execute(`
+            await this.client.execute(`
             CREATE INDEX IF NOT EXISTS idx_reviews_card_id ON reviews(card_id)
         `);
 
-        await this.client.execute(`
+            await this.client.execute(`
             CREATE INDEX IF NOT EXISTS idx_decks_user_id ON decks(user_id)
         `);
 
-        await this.client.execute(`
+            await this.client.execute(`
             CREATE INDEX IF NOT EXISTS idx_pdf_imports_user_id ON pdf_imports(user_id)
         `);
 
-        await this.client.execute(`
+            await this.client.execute(`
             CREATE INDEX IF NOT EXISTS idx_pdf_imports_deck_id ON pdf_imports(deck_id)
         `);
+        } catch (error) {
+            console.error('Error inicializando tablas de base de datos:', error);
+            throw error;
+        }
     }
 
     // Métodos de autenticación
