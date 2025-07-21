@@ -1,6 +1,6 @@
 import express from 'express';
 import multer from 'multer';
-import pdf from 'pdf-parse';
+import { extractTextFromPdf } from '../utils/pdfParser.js';
 import db from '../database.js';
 import auth from '../middleware/auth.js';
 import geminiService from '../services/geminiService.js';
@@ -26,22 +26,39 @@ const upload = multer({
 router.post('/upload', auth, upload.single('pdf'), async (req, res) => {
     try {
         if (!req.file) {
-            return res.status(400).json({ error: 'No se proporcionó archivo PDF' });
+            return res.status(400).json({
+                error: 'No se proporcionó archivo PDF',
+                code: 'NO_FILE',
+            });
         }
 
         const { deckId, cardCount = 10, difficulty = 'medium', focus = 'general' } = req.body;
 
         if (!deckId) {
-            return res.status(400).json({ error: 'ID del mazo es requerido' });
+            return res.status(400).json({
+                error: 'ID del mazo es requerido',
+                code: 'MISSING_DECK_ID',
+            });
+        }
+
+        // Validar tamaño del archivo
+        if (req.file.size > 10 * 1024 * 1024) {
+            return res.status(400).json({
+                error: 'El archivo PDF es demasiado grande (máximo 10MB)',
+                code: 'FILE_TOO_LARGE',
+            });
         }
 
         // Verificar que el mazo pertenece al usuario
         const deck = await db.getDeck(deckId, req.user.id);
         if (!deck) {
-            return res.status(404).json({ error: 'Mazo no encontrado' });
+            return res.status(404).json({
+                error: 'Mazo no encontrado o no tienes permisos para acceder a él',
+                code: 'DECK_NOT_FOUND',
+            });
         }
 
-        // Crear registro de importación (ya no necesitamos guardar file_name)
+        // Crear registro de importación
         const importId = await db.createPdfImport(req.user.id, deckId, req.file.originalname, 'processing');
 
         // Procesar el PDF en segundo plano usando el buffer en memoria
@@ -66,32 +83,51 @@ router.post('/upload', auth, upload.single('pdf'), async (req, res) => {
             success: true,
             importId,
             message: 'PDF recibido, procesando en segundo plano',
+            estimatedTime: '1-3 minutos',
         });
     } catch (error) {
         console.error('Error al subir PDF:', error);
-        res.status(500).json({ error: 'Error interno del servidor' });
+
+        // Diferentes tipos de error
+        if (error.message.includes('PDF')) {
+            return res.status(400).json({
+                error: 'Error procesando el archivo PDF: ' + error.message,
+                code: 'PDF_PROCESSING_ERROR',
+            });
+        }
+
+        res.status(500).json({
+            error: 'Error interno del servidor',
+            code: 'INTERNAL_ERROR',
+        });
     }
 });
 
 // Función para procesar PDF de forma asíncrona usando buffer en memoria
 async function processPdfAsync(importId, pdfBuffer, deckId, options) {
     try {
-        // Parsear el PDF directamente desde el buffer en memoria
-        const pdfData = await pdf(pdfBuffer);
+        console.log(`Iniciando procesamiento de PDF para importación ${importId}`);
 
-        if (!pdfData.text || pdfData.text.trim().length < 100) {
-            throw new Error('El PDF no contiene suficiente texto para generar flashcards');
+        // Parsear el PDF directamente desde el buffer en memoria usando el nuevo parser
+        const pdfText = await extractTextFromPdf(pdfBuffer);
+
+        if (!pdfText || pdfText.trim().length < 100) {
+            throw new Error('El PDF no contiene suficiente texto para generar flashcards (mínimo 100 caracteres)');
         }
+
+        console.log(`Texto extraído exitosamente para importación ${importId}: ${pdfText.length} caracteres`);
 
         // Generar flashcards con Gemini
-        console.log(`Generating flashcards for import ${importId} with options:`, options);
-        const flashcards = await geminiService.generateFlashcardsFromText(pdfData.text, options);
+        console.log(`Generando flashcards para importación ${importId} con opciones:`, options);
+        const flashcards = await geminiService.generateFlashcardsFromText(pdfText, options);
 
         if (!flashcards || flashcards.length === 0) {
-            throw new Error('No se pudieron generar flashcards del contenido');
+            throw new Error(
+                'No se pudieron generar flashcards del contenido. Verifica que el PDF contenga texto educativo relevante.'
+            );
         }
 
-        console.log(`Generated ${flashcards.length} flashcards for import ${importId}`);
+        console.log(`Generadas ${flashcards.length} flashcards para importación ${importId}`);
 
         // Guardar las flashcards en la base de datos
         const cardIds = await db.createBulkCards(deckId, flashcards);
@@ -105,15 +141,36 @@ async function processPdfAsync(importId, pdfBuffer, deckId, options) {
             args: [cardIds.length, importId],
         });
 
-        console.log(`PDF procesado exitosamente. Generadas ${cardIds.length} flashcards para importación ${importId}`);
+        console.log(
+            `✅ PDF procesado exitosamente. Generadas ${cardIds.length} flashcards para importación ${importId}`
+        );
 
         // El buffer se liberará automáticamente por el garbage collector
-        // No necesitamos limpiar archivos porque no se guardan en disco
     } catch (error) {
-        console.error(`Error procesando PDF para importación ${importId}:`, error);
+        console.error(`❌ Error procesando PDF para importación ${importId}:`, error);
+
+        // Categorizar el error para mejor debugging
+        let errorCategory = 'UNKNOWN_ERROR';
+        let userFriendlyMessage = error.message;
+
+        if (error.message.includes('PDF')) {
+            errorCategory = 'PDF_PARSING_ERROR';
+            userFriendlyMessage = 'Error al leer el archivo PDF. Asegúrate de que el archivo no esté dañado.';
+        } else if (error.message.includes('Gemini') || error.message.includes('generateFlashcardsFromText')) {
+            errorCategory = 'AI_GENERATION_ERROR';
+            userFriendlyMessage = 'Error al generar las flashcards. Intenta nuevamente en unos minutos.';
+        } else if (error.message.includes('database') || error.message.includes('db')) {
+            errorCategory = 'DATABASE_ERROR';
+            userFriendlyMessage = 'Error al guardar las flashcards. Intenta nuevamente.';
+        } else if (error.message.includes('texto')) {
+            errorCategory = 'INSUFFICIENT_TEXT';
+            userFriendlyMessage = 'El PDF no contiene suficiente texto para generar flashcards.';
+        }
 
         // Actualizar el estado con error
-        await db.updatePdfImportStatus(importId, 'failed', error.message);
+        await db.updatePdfImportStatus(importId, 'failed', userFriendlyMessage);
+
+        console.log(`Error categorizado como: ${errorCategory} para importación ${importId}`);
     }
     // Nota: El buffer en memoria se libera automáticamente cuando sale del scope
 }
