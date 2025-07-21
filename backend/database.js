@@ -5,24 +5,46 @@ config();
 
 class FlashcardsDB {
     constructor() {
-        // Validar variables de entorno
-        if (!process.env.TURSO_DATABASE_URL || !process.env.TURSO_AUTH_TOKEN) {
-            throw new Error('Variables de entorno TURSO_DATABASE_URL y TURSO_AUTH_TOKEN son requeridas');
+        this.client = null;
+        this.initialized = false;
+    }
+
+    async initializeClient() {
+        if (this.client && this.initialized) {
+            return this.client;
         }
 
-        this.client = createClient({
-            url: process.env.TURSO_DATABASE_URL,
-            authToken: process.env.TURSO_AUTH_TOKEN,
-        });
-        this.initDB().catch((error) => {
-            console.error('Error inicializando base de datos:', error);
-        });
+        try {
+            // Validar variables de entorno
+            if (!process.env.TURSO_DATABASE_URL || !process.env.TURSO_AUTH_TOKEN) {
+                throw new Error('Variables de entorno TURSO_DATABASE_URL y TURSO_AUTH_TOKEN son requeridas');
+            }
+
+            this.client = createClient({
+                url: process.env.TURSO_DATABASE_URL,
+                authToken: process.env.TURSO_AUTH_TOKEN,
+            });
+
+            await this.initDB();
+            this.initialized = true;
+            return this.client;
+        } catch (error) {
+            console.error('Error inicializando cliente de base de datos:', error);
+            throw error;
+        }
+    }
+
+    async ensureClient() {
+        if (!this.client || !this.initialized) {
+            await this.initializeClient();
+        }
+        return this.client;
     }
 
     async initDB() {
         try {
             // Crear tabla users
-            await this.client.execute(`
+            await client.execute(`
             CREATE TABLE IF NOT EXISTS users (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
                 username TEXT NOT NULL UNIQUE,
@@ -35,7 +57,7 @@ class FlashcardsDB {
         `);
 
             // Crear tabla decks con referencia a users
-            await this.client.execute(`
+            await client.execute(`
             CREATE TABLE IF NOT EXISTS decks (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
                 user_id INTEGER NOT NULL,
@@ -48,7 +70,7 @@ class FlashcardsDB {
         `);
 
             // Crear tabla cards
-            await this.client.execute(`
+            await client.execute(`
             CREATE TABLE IF NOT EXISTS cards (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
                 deck_id INTEGER NOT NULL,
@@ -66,7 +88,7 @@ class FlashcardsDB {
         `);
 
             // Crear tabla reviews
-            await this.client.execute(`
+            await client.execute(`
             CREATE TABLE IF NOT EXISTS reviews (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
                 card_id INTEGER NOT NULL,
@@ -79,7 +101,7 @@ class FlashcardsDB {
         `);
 
             // Crear tabla para importaciones de PDF
-            await this.client.execute(`
+            await client.execute(`
             CREATE TABLE IF NOT EXISTS pdf_imports (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
                 user_id INTEGER NOT NULL,
@@ -97,27 +119,27 @@ class FlashcardsDB {
         `);
 
             // Crear índices
-            await this.client.execute(`
+            await client.execute(`
             CREATE INDEX IF NOT EXISTS idx_cards_deck_id ON cards(deck_id)
         `);
 
-            await this.client.execute(`
+            await client.execute(`
             CREATE INDEX IF NOT EXISTS idx_cards_due_date ON cards(due_date)
         `);
 
-            await this.client.execute(`
+            await client.execute(`
             CREATE INDEX IF NOT EXISTS idx_reviews_card_id ON reviews(card_id)
         `);
 
-            await this.client.execute(`
+            await client.execute(`
             CREATE INDEX IF NOT EXISTS idx_decks_user_id ON decks(user_id)
         `);
 
-            await this.client.execute(`
+            await client.execute(`
             CREATE INDEX IF NOT EXISTS idx_pdf_imports_user_id ON pdf_imports(user_id)
         `);
 
-            await this.client.execute(`
+            await client.execute(`
             CREATE INDEX IF NOT EXISTS idx_pdf_imports_deck_id ON pdf_imports(deck_id)
         `);
         } catch (error) {
@@ -129,7 +151,8 @@ class FlashcardsDB {
     // Métodos de autenticación
     async createUser(username, email, password) {
         try {
-            const result = await this.client.execute({
+            const client = await this.ensureClient();
+            const result = await client.execute({
                 sql: 'INSERT INTO users (username, email, password) VALUES (?, ?, ?) RETURNING id',
                 args: [username, email, password],
             });
@@ -143,7 +166,8 @@ class FlashcardsDB {
     }
 
     async getUserByEmail(email) {
-        const result = await this.client.execute({
+        const client = await this.ensureClient();
+        const result = await client.execute({
             sql: 'SELECT *, resetPasswordToken, resetPasswordExpires FROM users WHERE email = ?',
             args: [email],
         });
@@ -151,7 +175,8 @@ class FlashcardsDB {
     }
 
     async updateUserResetToken(email, resetPasswordToken, resetPasswordExpires) {
-        const result = await this.client.execute({
+        const client = await this.ensureClient();
+        const result = await client.execute({
             sql: 'UPDATE users SET resetPasswordToken = ?, resetPasswordExpires = ? WHERE email = ?',
             args: [resetPasswordToken, resetPasswordExpires, email],
         });
@@ -159,7 +184,7 @@ class FlashcardsDB {
     }
 
     async updateUserPassword(email, hashedPassword) {
-        const result = await this.client.execute({
+        const result = await client.execute({
             sql: 'UPDATE users SET password = ? WHERE email = ?',
             args: [hashedPassword, email],
         });
@@ -167,7 +192,7 @@ class FlashcardsDB {
     }
 
     async getUserById(id) {
-        const result = await this.client.execute({
+        const result = await client.execute({
             sql: 'SELECT id, username, email, created_at FROM users WHERE id = ?',
             args: [id],
         });
@@ -177,7 +202,7 @@ class FlashcardsDB {
     // Métodos para mazos (actualizados para usuarios)
     async getDeck(deckId, userId) {
         try {
-            const result = await this.client.execute({
+            const result = await client.execute({
                 sql: 'SELECT id, name, description, created_at FROM decks WHERE id = ? AND user_id = ?',
                 args: [deckId, userId],
             });
@@ -189,7 +214,7 @@ class FlashcardsDB {
     }
 
     async getAllDecks(userId) {
-        const result = await this.client.execute({
+        const result = await client.execute({
             sql: 'SELECT id, name, description, created_at FROM decks WHERE user_id = ? ORDER BY name',
             args: [userId],
         });
@@ -197,7 +222,7 @@ class FlashcardsDB {
     }
 
     async createDeck(name, description = '', userId) {
-        const result = await this.client.execute({
+        const result = await client.execute({
             sql: 'INSERT INTO decks (name, description, user_id) VALUES (?, ?, ?) RETURNING id',
             args: [name, description, userId],
         });
@@ -205,7 +230,7 @@ class FlashcardsDB {
     }
 
     async updateDeck(name, description, deckId, userId) {
-        const result = await this.client.execute({
+        const result = await client.execute({
             sql: 'UPDATE decks SET name = ?, description = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ? AND user_id = ?',
             args: [name, description, deckId, userId],
         });
@@ -213,7 +238,7 @@ class FlashcardsDB {
     }
 
     async deleteDeck(deckId, userId) {
-        const result = await this.client.execute({
+        const result = await client.execute({
             sql: 'DELETE FROM decks WHERE id = ? AND user_id = ?',
             args: [deckId, userId],
         });
@@ -222,7 +247,7 @@ class FlashcardsDB {
 
     // Métodos para tarjetas (actualizados para usuarios)
     async getCardsByDeck(deckId, userId) {
-        const result = await this.client.execute({
+        const result = await client.execute({
             sql: `SELECT c.id, c.front, c.back, c.tags, c.interval, c.ease_factor, c.repetitions, c.due_date 
                   FROM cards c
                   JOIN decks d ON c.deck_id = d.id
@@ -233,7 +258,7 @@ class FlashcardsDB {
     }
 
     async getCard(cardId, userId) {
-        const result = await this.client.execute({
+        const result = await client.execute({
             sql: `SELECT c.id, c.deck_id, c.front, c.back, c.tags, c.interval, c.ease_factor, c.repetitions, c.due_date
                   FROM cards c
                   JOIN decks d ON c.deck_id = d.id
@@ -250,7 +275,7 @@ class FlashcardsDB {
             throw new Error('Mazo no encontrado');
         }
 
-        const result = await this.client.execute({
+        const result = await client.execute({
             sql: `INSERT INTO cards (deck_id, front, back, tags, due_date)
                   VALUES (?, ?, ?, ?, date('now')) RETURNING id`,
             args: [deckId, front, back, JSON.stringify(tags)],
@@ -264,7 +289,7 @@ class FlashcardsDB {
             return false;
         }
 
-        const result = await this.client.execute({
+        const result = await client.execute({
             sql: `UPDATE cards 
                   SET front = ?, back = ?, tags = ?, updated_at = CURRENT_TIMESTAMP
                   WHERE id = ?`,
@@ -279,7 +304,7 @@ class FlashcardsDB {
             return false;
         }
 
-        const result = await this.client.execute({
+        const result = await client.execute({
             sql: 'DELETE FROM cards WHERE id = ?',
             args: [cardId],
         });
@@ -288,7 +313,7 @@ class FlashcardsDB {
 
     // Métodos para el sistema de repaso espaciado (actualizados para usuarios)
     async getDueCards(deckId, userId, limit = 20, ignoreDate = false) {
-        const result = await this.client.execute({
+        const result = await client.execute({
             sql: `SELECT c.id, c.front, c.back, c.tags, c.interval, c.ease_factor, c.repetitions, c.due_date
                   FROM cards c
                   JOIN decks d ON c.deck_id = d.id
@@ -302,7 +327,7 @@ class FlashcardsDB {
     }
 
     async updateCardReviewData(cardId, interval, easeFactor, repetitions, dueDate) {
-        const result = await this.client.execute({
+        const result = await client.execute({
             sql: `UPDATE cards
                   SET interval = ?, ease_factor = ?, repetitions = ?, due_date = ?,
                       updated_at = CURRENT_TIMESTAMP
@@ -318,7 +343,7 @@ class FlashcardsDB {
             return false;
         }
 
-        const result = await this.client.execute({
+        const result = await client.execute({
             sql: 'INSERT INTO reviews (card_id, user_id, quality) VALUES (?, ?, ?)',
             args: [cardId, userId, quality],
         });
@@ -346,7 +371,7 @@ class FlashcardsDB {
             args.push(`%${tag}%`);
         }
 
-        const result = await this.client.execute({
+        const result = await client.execute({
             sql,
             args,
         });
@@ -354,7 +379,7 @@ class FlashcardsDB {
     }
 
     async getAllTags(userId) {
-        const result = await this.client.execute({
+        const result = await client.execute({
             sql: `SELECT c.tags
                   FROM cards c
                   JOIN decks d ON c.deck_id = d.id
@@ -371,7 +396,7 @@ class FlashcardsDB {
     }
 
     async updateUserPassword(email, hashedPassword) {
-        const result = await this.client.execute({
+        const result = await client.execute({
             sql: 'UPDATE users SET password = ? WHERE email = ?',
             args: [hashedPassword, email],
         });
@@ -381,7 +406,7 @@ class FlashcardsDB {
     async getStudyStats(userId) {
         // Estadísticas básicas
         const totalCards = (
-            await this.client.execute({
+            await client.execute({
                 sql: `SELECT COUNT(*) as count 
                  FROM cards c
                  JOIN decks d ON c.deck_id = d.id
@@ -391,11 +416,11 @@ class FlashcardsDB {
         ).rows[0].count;
 
         const totalDecks = (
-            await this.client.execute({ sql: `SELECT COUNT(*) as count FROM decks WHERE user_id = ?`, args: [userId] })
+            await client.execute({ sql: `SELECT COUNT(*) as count FROM decks WHERE user_id = ?`, args: [userId] })
         ).rows[0].count;
 
         const dueToday = (
-            await this.client.execute({
+            await client.execute({
                 sql: `SELECT COUNT(*) as count 
                  FROM cards c
                  JOIN decks d ON c.deck_id = d.id
@@ -406,7 +431,7 @@ class FlashcardsDB {
 
         // Estadísticas de revisiones
         const reviewStats = (
-            await this.client.execute({
+            await client.execute({
                 sql: `SELECT 
                     COUNT(*) as total_reviews,
                     COUNT(DISTINCT date(timestamp)) as study_days,
@@ -421,7 +446,7 @@ class FlashcardsDB {
 
         // Revisiones por día de la última semana
         const reviewsLastWeek = (
-            await this.client.execute({
+            await client.execute({
                 sql: `SELECT 
                     date(timestamp) as date,
                     COUNT(*) as count
@@ -436,7 +461,7 @@ class FlashcardsDB {
 
         // Estadísticas de calidad
         const qualityDistribution = (
-            await this.client.execute({
+            await client.execute({
                 sql: `SELECT 
                     quality,
                     COUNT(*) as count
@@ -451,7 +476,7 @@ class FlashcardsDB {
 
         // Progreso diario
         const todaysProgress = (
-            await this.client.execute({
+            await client.execute({
                 sql: `SELECT 
                     COUNT(*) as reviews_today,
                     AVG(quality) as today_avg_quality
@@ -487,7 +512,7 @@ class FlashcardsDB {
 
     async deleteUser(userId) {
         try {
-            const result = await this.client.execute({ sql: `DELETE FROM users WHERE id = ?`, args: [userId] });
+            const result = await client.execute({ sql: `DELETE FROM users WHERE id = ?`, args: [userId] });
             return result.rowsAffected > 0;
         } catch (error) {
             console.error('Error al eliminar usuario:', error);
@@ -498,7 +523,7 @@ class FlashcardsDB {
     // Métodos para manejo de PDFs y generación de flashcards
     async createPdfImport(userId, deckId, fileName, originalName, status = 'processing') {
         try {
-            const result = await this.client.execute({
+            const result = await client.execute({
                 sql: `INSERT INTO pdf_imports (user_id, deck_id, file_name, original_name, status, created_at) 
                       VALUES (?, ?, ?, ?, ?, CURRENT_TIMESTAMP) RETURNING id`,
                 args: [userId, deckId, fileName, originalName, status],
@@ -512,7 +537,7 @@ class FlashcardsDB {
 
     async updatePdfImportStatus(importId, status, errorMessage = null) {
         try {
-            const result = await this.client.execute({
+            const result = await client.execute({
                 sql: `UPDATE pdf_imports SET status = ?, error_message = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?`,
                 args: [status, errorMessage, importId],
             });
@@ -525,7 +550,7 @@ class FlashcardsDB {
 
     async getPdfImportsByUser(userId) {
         try {
-            const result = await this.client.execute({
+            const result = await client.execute({
                 sql: `SELECT pi.*, d.name as deck_name 
                       FROM pdf_imports pi 
                       LEFT JOIN decks d ON pi.deck_id = d.id 
@@ -544,7 +569,7 @@ class FlashcardsDB {
         try {
             const results = [];
             for (const card of cards) {
-                const result = await this.client.execute({
+                const result = await client.execute({
                     sql: `INSERT INTO cards (deck_id, front, back, tags, created_at, updated_at) 
                           VALUES (?, ?, ?, ?, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP) RETURNING id`,
                     args: [deckId, card.front, card.back, JSON.stringify(card.tags || [])],
@@ -560,7 +585,7 @@ class FlashcardsDB {
 
     async getCard(cardId, userId) {
         try {
-            const result = await this.client.execute({
+            const result = await client.execute({
                 sql: `SELECT c.* FROM cards c 
                       JOIN decks d ON c.deck_id = d.id 
                       WHERE c.id = ? AND d.user_id = ?`,

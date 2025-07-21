@@ -1,33 +1,14 @@
 import express from 'express';
 import multer from 'multer';
 import pdf from 'pdf-parse';
-import path from 'path';
-import fs from 'fs';
-import { fileURLToPath } from 'url';
 import db from '../database.js';
 import auth from '../middleware/auth.js';
 import geminiService from '../services/geminiService.js';
 
 const router = express.Router();
 
-// Configuración para __dirname en ES modules
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = path.dirname(__filename);
-
-// Configurar multer para subida de archivos
-const storage = multer.diskStorage({
-    destination: (req, file, cb) => {
-        const uploadDir = path.join(__dirname, '../uploads');
-        if (!fs.existsSync(uploadDir)) {
-            fs.mkdirSync(uploadDir, { recursive: true });
-        }
-        cb(null, uploadDir);
-    },
-    filename: (req, file, cb) => {
-        const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1e9);
-        cb(null, `pdf-${uniqueSuffix}${path.extname(file.originalname)}`);
-    },
-});
+// Configurar multer para usar memoria en lugar del disco (compatible con Vercel)
+const storage = multer.memoryStorage();
 
 const upload = multer({
     storage,
@@ -66,13 +47,13 @@ router.post('/upload', auth, upload.single('pdf'), async (req, res) => {
         const importId = await db.createPdfImport(
             req.user.id,
             deckId,
-            req.file.filename,
+            req.file.originalname,
             req.file.originalname,
             'processing'
         );
 
-        // Procesar el PDF en segundo plano
-        processPdfAsync(importId, req.file.path, deckId, {
+        // Procesar el PDF directamente desde memoria
+        processPdfAsync(importId, req.file.buffer, deckId, {
             cardCount: parseInt(cardCount),
             difficulty,
             focus,
@@ -95,22 +76,15 @@ router.post('/upload', auth, upload.single('pdf'), async (req, res) => {
         });
     } catch (error) {
         console.error('Error al subir PDF:', error);
-
-        // Limpiar archivo si hay error
-        if (req.file && fs.existsSync(req.file.path)) {
-            fs.unlinkSync(req.file.path);
-        }
-
         res.status(500).json({ error: 'Error interno del servidor' });
     }
 });
 
-// Función para procesar PDF de forma asíncrona
-async function processPdfAsync(importId, filePath, deckId, options) {
+// Función para procesar PDF de forma asíncrona usando buffer de memoria
+async function processPdfAsync(importId, fileBuffer, deckId, options) {
     try {
-        // Leer y parsear el PDF
-        const dataBuffer = fs.readFileSync(filePath);
-        const pdfData = await pdf(dataBuffer);
+        // Parsear el PDF directamente desde el buffer
+        const pdfData = await pdf(fileBuffer);
 
         if (!pdfData.text || pdfData.text.trim().length < 100) {
             throw new Error('El PDF no contiene suficiente texto para generar flashcards');
@@ -144,11 +118,6 @@ async function processPdfAsync(importId, filePath, deckId, options) {
 
         // Actualizar el estado con error
         await db.updatePdfImportStatus(importId, 'failed', error.message);
-    } finally {
-        // Limpiar archivo temporal
-        if (fs.existsSync(filePath)) {
-            fs.unlinkSync(filePath);
-        }
     }
 }
 
