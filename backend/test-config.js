@@ -9,15 +9,11 @@ config();
 console.log('🔍 Verificando configuración...\n');
 
 // Verificar variables de entorno
-const requiredEnvVars = [
-    'JWT_SECRET',
-    'TURSO_DATABASE_URL', 
-    'TURSO_AUTH_TOKEN'
-];
+const requiredEnvVars = ['JWT_SECRET', 'TURSO_DATABASE_URL', 'TURSO_AUTH_TOKEN'];
 
 let missingVars = [];
 
-requiredEnvVars.forEach(varName => {
+requiredEnvVars.forEach((varName) => {
     if (!process.env[varName]) {
         missingVars.push(varName);
         console.log(`❌ ${varName}: NO CONFIGURADA`);
@@ -39,7 +35,7 @@ if (process.env.TURSO_DATABASE_URL && process.env.TURSO_AUTH_TOKEN) {
             url: process.env.TURSO_DATABASE_URL,
             authToken: process.env.TURSO_AUTH_TOKEN,
         });
-        
+
         const result = await client.execute('SELECT 1 as test');
         console.log('✅ Conexión a base de datos exitosa');
         console.log(`📊 Resultado de prueba: ${result.rows[0]?.test}`);

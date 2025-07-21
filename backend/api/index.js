@@ -21,10 +21,12 @@ if (!process.env.TURSO_DATABASE_URL || !process.env.TURSO_AUTH_TOKEN) {
 const app = express();
 
 // Middleware
-app.use(cors({
-    origin: '*',
-    credentials: true
-}));
+app.use(
+    cors({
+        origin: '*',
+        credentials: true,
+    })
+);
 app.use(express.json({ limit: '10mb' }));
 
 // Configuración de base de datos
@@ -65,15 +67,15 @@ function calculateSM2(quality, repetitions, easeFactor, interval) {
 
 // Ruta de prueba
 app.get('/', (req, res) => {
-    res.json({ 
-        message: 'FlashCards API funcionando', 
+    res.json({
+        message: 'FlashCards API funcionando',
         timestamp: new Date().toISOString(),
         env: {
             nodeEnv: process.env.NODE_ENV,
             hasJwtSecret: !!process.env.JWT_SECRET,
             hasDbUrl: !!process.env.TURSO_DATABASE_URL,
-            hasDbToken: !!process.env.TURSO_AUTH_TOKEN
-        }
+            hasDbToken: !!process.env.TURSO_AUTH_TOKEN,
+        },
     });
 });
 
@@ -82,18 +84,18 @@ app.get('/health', async (req, res) => {
     try {
         // Probar conexión a la base de datos
         await dbClient.execute('SELECT 1');
-        res.json({ 
-            status: 'ok', 
+        res.json({
+            status: 'ok',
             database: 'connected',
-            timestamp: new Date().toISOString()
+            timestamp: new Date().toISOString(),
         });
     } catch (error) {
         console.error('Health check error:', error);
-        res.status(500).json({ 
-            status: 'error', 
+        res.status(500).json({
+            status: 'error',
             database: 'disconnected',
             error: error.message,
-            timestamp: new Date().toISOString()
+            timestamp: new Date().toISOString(),
         });
     }
 });
@@ -170,19 +172,19 @@ app.post('/auth/login', async (req, res) => {
 // Middleware de manejo de errores
 app.use((error, req, res, next) => {
     console.error('Error no manejado:', error);
-    res.status(500).json({ 
+    res.status(500).json({
         error: 'Error interno del servidor',
         message: process.env.NODE_ENV === 'development' ? error.message : 'Algo salió mal',
-        timestamp: new Date().toISOString()
+        timestamp: new Date().toISOString(),
     });
 });
 
 // Middleware para rutas no encontradas
 app.use('*', (req, res) => {
-    res.status(404).json({ 
+    res.status(404).json({
         error: 'Ruta no encontrada',
         path: req.originalUrl,
-        timestamp: new Date().toISOString()
+        timestamp: new Date().toISOString(),
     });
 });
 
