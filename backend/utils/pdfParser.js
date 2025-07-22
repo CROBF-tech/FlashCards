@@ -1,6 +1,6 @@
 /**
  * Extrae texto de un buffer PDF con manejo robusto de errores
- * @param {Buffer} pdfBuffer - Buffer del archivo PDF (puede ser desde memoria o leído desde disco)
+ * @param {Buffer} pdfBuffer - Buffer del archivo PDF (desde memoria)
  * @returns {Promise<string>} - Texto extraído del PDF
  */
 export async function extractTextFromPdf(pdfBuffer) {
@@ -16,16 +16,15 @@ export async function extractTextFromPdf(pdfBuffer) {
             throw new Error('El archivo no parece ser un PDF válido');
         }
 
-        console.log(`Procesando PDF de ${pdfBuffer.length} bytes`);
+        console.log(`Procesando PDF de ${pdfBuffer.length} bytes desde memoria`);
 
         // Importación dinámica con configuración específica para Vercel
         const pdfParse = (await import('pdf-parse')).default;
 
-        // Opciones específicas para evitar problemas en entornos serverless
+        // Opciones específicas para entornos serverless
         const options = {
-            // Configuración para entornos limitados
-            max: 0, // Sin límite de páginas
-            pagerender: null, // Sin renderizado de página
+            max: 0,
+            pagerender: null,
             normalizeWhitespace: true,
             disableCombineTextItems: false,
         };
@@ -38,8 +37,8 @@ export async function extractTextFromPdf(pdfBuffer) {
 
         // Limpiar y normalizar el texto extraído
         const cleanedText = data.text
-            .replace(/\s+/g, ' ') // Normalizar espacios en blanco
-            .replace(/\n{3,}/g, '\n\n') // Limitar saltos de línea múltiples
+            .replace(/\s+/g, ' ')
+            .replace(/\n{3,}/g, '\n\n')
             .trim();
 
         if (cleanedText.length < 20) {
@@ -47,7 +46,7 @@ export async function extractTextFromPdf(pdfBuffer) {
         }
 
         console.log(
-            `PDF procesado exitosamente. Texto extraído: ${cleanedText.length} caracteres, ${data.numpages} páginas`
+            `PDF procesado exitosamente desde memoria. Texto extraído: ${cleanedText.length} caracteres, ${data.numpages} páginas`
         );
 
         return cleanedText;
@@ -57,18 +56,7 @@ export async function extractTextFromPdf(pdfBuffer) {
     }
 }
 
-/**
- * Extrae texto directamente de un archivo PDF usando su ruta
- * @param {string} filePath - Ruta al archivo PDF
- * @returns {Promise<string>} - Texto extraído del PDF
- */
+// Función para compatibilidad (ya no necesaria en serverless)
 export async function extractTextFromPdfFile(filePath) {
-    try {
-        const fs = await import('fs/promises');
-        const pdfBuffer = await fs.readFile(filePath);
-        return await extractTextFromPdf(pdfBuffer);
-    } catch (error) {
-        console.error('Error al leer y extraer texto del archivo PDF:', error.message);
-        throw new Error(`No se pudo leer el archivo PDF: ${error.message}`);
-    }
+    throw new Error('Lectura de archivos desde disco no disponible en entorno serverless');
 }

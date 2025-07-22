@@ -1,27 +1,15 @@
 import express from 'express';
 import multer from 'multer';
-import path from 'path';
-import fs from 'fs/promises';
 import { extractTextFromPdf } from '../utils/pdfParser.js';
-import { cleanupOldPdfFiles, getUploadsStats, checkDiskSpace } from '../utils/fileManager.js';
 import db from '../database.js';
 import auth from '../middleware/auth.js';
 import geminiService from '../services/geminiService.js';
 
 const router = express.Router();
 
-// Configurar multer para usar almacenamiento en disco
+// Configurar multer para usar almacenamiento en memoria (compatible con Vercel)
 const upload = multer({
-    storage: multer.diskStorage({
-        destination: function (req, file, cb) {
-            cb(null, path.join(process.cwd(), 'uploads'));
-        },
-        filename: function (req, file, cb) {
-            // Generar nombre único para evitar conflictos
-            const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1e9);
-            cb(null, `pdf-${uniqueSuffix}-${file.originalname}`);
-        },
-    }),
+    storage: multer.memoryStorage(), // ✅ Usar memoria en lugar de disco
     limits: {
         fileSize: 10 * 1024 * 1024, // 10MB límite
     },
@@ -70,8 +58,8 @@ router.post('/upload', auth, upload.single('pdf'), async (req, res) => {
             });
         }
 
-        // Procesar el PDF directamente sin guardar información de importación
-        const result = await processPdfSync(req.file.path, deckId, {
+        // Procesar el PDF directamente desde el buffer en memoria
+        const result = await processPdfFromBuffer(req.file.buffer, deckId, {
             cardCount: parseInt(cardCount),
             difficulty,
             focus,
@@ -80,7 +68,6 @@ router.post('/upload', auth, upload.single('pdf'), async (req, res) => {
         console.log(`PDF processed for user ${req.user.id}:`, {
             fileName: req.file.originalname,
             fileSize: req.file.size,
-            filePath: req.file.path,
             cardsGenerated: result.cardsGenerated,
             options: {
                 cardCount: parseInt(cardCount),
@@ -112,15 +99,12 @@ router.post('/upload', auth, upload.single('pdf'), async (req, res) => {
     }
 });
 
-// Función para procesar PDF de forma síncrona y devolver resultado directo
-async function processPdfSync(pdfFilePath, deckId, options) {
+// Función para procesar PDF desde buffer en memoria
+async function processPdfFromBuffer(pdfBuffer, deckId, options) {
     try {
-        console.log(`Iniciando procesamiento de PDF: ${pdfFilePath}`);
+        console.log(`Iniciando procesamiento de PDF desde buffer: ${pdfBuffer.length} bytes`);
 
-        // Leer el archivo PDF desde disco
-        const pdfBuffer = await fs.readFile(pdfFilePath);
-
-        // Parsear el PDF usando el buffer
+        // Parsear el PDF usando el buffer directamente
         const pdfText = await extractTextFromPdf(pdfBuffer);
 
         if (!pdfText || pdfText.trim().length < 100) {
@@ -146,9 +130,6 @@ async function processPdfSync(pdfFilePath, deckId, options) {
 
         console.log(`✅ PDF procesado exitosamente. Generadas ${cardIds.length} flashcards`);
 
-        // Limpiar el archivo temporal después del procesamiento exitoso
-        await cleanupTempFile(pdfFilePath);
-
         return {
             success: true,
             cardsGenerated: cardIds.length,
@@ -156,9 +137,6 @@ async function processPdfSync(pdfFilePath, deckId, options) {
         };
     } catch (error) {
         console.error(`❌ Error procesando PDF:`, error);
-
-        // Limpiar el archivo temporal incluso si hay error
-        await cleanupTempFile(pdfFilePath);
 
         // Categorizar el error para mejor debugging
         if (error.message.includes('PDF')) {
@@ -174,28 +152,6 @@ async function processPdfSync(pdfFilePath, deckId, options) {
         throw error;
     }
 }
-
-// Función para limpiar archivos temporales
-async function cleanupTempFile(filePath) {
-    try {
-        await fs.unlink(filePath);
-        console.log(`🗑️ Archivo temporal eliminado: ${filePath}`);
-    } catch (error) {
-        // No es crítico si no se puede eliminar el archivo
-        console.warn(`⚠️ No se pudo eliminar el archivo temporal ${filePath}:`, error.message);
-    }
-}
-
-// Función para limpiar archivos antiguos (más de 1 hora)
-async function cleanupOldFiles() {
-    await cleanupOldPdfFiles(60 * 60 * 1000); // 1 hora
-}
-
-// Ejecutar limpieza cada 30 minutos
-setInterval(cleanupOldFiles, 30 * 60 * 1000);
-
-// Ejecutar limpieza inicial al cargar el módulo
-cleanupOldFiles();
 
 // Ruta para mejorar una flashcard existente con Gemini
 router.post('/enhance-card/:cardId', auth, async (req, res) => {
@@ -229,16 +185,22 @@ router.post('/enhance-card/:cardId', auth, async (req, res) => {
     }
 });
 
-// Ruta para obtener estadísticas de uploads (solo para desarrollo/debugging)
+// Ruta para obtener estadísticas de uploads (actualizada para serverless)
 router.get('/uploads/stats', auth, async (req, res) => {
     try {
-        const stats = await getUploadsStats();
-        const diskCheck = await checkDiskSpace();
-
         res.json({
-            uploads: stats,
-            diskSpace: diskCheck,
-            message: diskCheck.needsCleanup ? 'Se recomienda limpieza de archivos temporales' : 'Estado normal',
+            uploads: {
+                fileCount: 0,
+                totalSizeMB: '0.00',
+                totalSizeBytes: 0,
+                message: 'Sistema de archivos en memoria - estadísticas no aplicables',
+            },
+            diskSpace: {
+                needsCleanup: false,
+                message: 'Sistema serverless - espacio gestionado automáticamente',
+            },
+            environment: 'serverless',
+            message: 'Entorno serverless - archivos procesados en memoria',
         });
     } catch (error) {
         console.error('Error al obtener estadísticas de uploads:', error);
@@ -246,16 +208,13 @@ router.get('/uploads/stats', auth, async (req, res) => {
     }
 });
 
-// Ruta para forzar limpieza manual de archivos temporales
+// Ruta para limpieza manual (no aplicable en serverless)
 router.post('/uploads/cleanup', auth, async (req, res) => {
     try {
-        const maxAgeMs = req.body.maxAgeMinutes ? req.body.maxAgeMinutes * 60 * 1000 : 60 * 60 * 1000;
-        const cleanedCount = await cleanupOldPdfFiles(maxAgeMs);
-
         res.json({
             success: true,
-            filesRemoved: cleanedCount,
-            message: `Limpieza completada: ${cleanedCount} archivos eliminados`,
+            filesRemoved: 0,
+            message: 'Limpieza no necesaria en entorno serverless - archivos procesados en memoria',
         });
     } catch (error) {
         console.error('Error en limpieza manual:', error);
