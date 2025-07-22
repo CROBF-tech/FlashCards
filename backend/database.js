@@ -393,51 +393,7 @@ class FlashcardsDB {
         }
     }
 
-    // Métodos para manejo de PDFs y generación de flashcards
-    async createPdfImport(userId, deckId, originalName, status = 'processing') {
-        try {
-            const result = await this.client.execute({
-                sql: `INSERT INTO pdf_imports (user_id, deck_id, file_name, original_name, status, created_at) 
-                      VALUES (?, ?, ?, ?, ?, CURRENT_TIMESTAMP) RETURNING id`,
-                args: [userId, deckId, null, originalName, status], // file_name como null porque no guardamos archivos
-            });
-            return result.rows[0].id;
-        } catch (error) {
-            console.error('Error al crear registro de importación PDF:', error);
-            throw error;
-        }
-    }
-
-    async updatePdfImportStatus(importId, status, errorMessage = null) {
-        try {
-            const result = await this.client.execute({
-                sql: `UPDATE pdf_imports SET status = ?, error_message = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?`,
-                args: [status, errorMessage, importId],
-            });
-            return result.rowsAffected > 0;
-        } catch (error) {
-            console.error('Error al actualizar estado de importación PDF:', error);
-            throw error;
-        }
-    }
-
-    async getPdfImportsByUser(userId) {
-        try {
-            const result = await this.client.execute({
-                sql: `SELECT pi.*, d.name as deck_name 
-                      FROM pdf_imports pi 
-                      LEFT JOIN decks d ON pi.deck_id = d.id 
-                      WHERE pi.user_id = ? 
-                      ORDER BY pi.created_at DESC`,
-                args: [userId],
-            });
-            return result.rows;
-        } catch (error) {
-            console.error('Error al obtener importaciones PDF del usuario:', error);
-            throw error;
-        }
-    }
-
+    // Método para crear múltiples tarjetas (para generación desde PDF)
     async createBulkCards(deckId, cards) {
         try {
             const results = [];

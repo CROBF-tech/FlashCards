@@ -27,9 +27,16 @@ api.interceptors.response.use(
             await AsyncStorage.removeItem(CONFIG.tokenStorageKey);
             // Aquí podrías disparar un evento para redirigir al usuario al login
         }
-        // Extract the message from the error response
-        const message = error.response?.data?.message || 'A ocurrido un error. Por favor, intente nuevamente.';
-        return Promise.reject(new Error(message));
+
+        // Preservar el error original para que los componentes puedan manejarlo apropiadamente
+        // Solo reescribir el mensaje si no hay información específica del servidor
+        if (!error.response?.data?.error && !error.response?.data?.message && !error.response?.data?.code) {
+            const message = error.response?.data?.message || 'A ocurrido un error. Por favor, intente nuevamente.';
+            return Promise.reject(new Error(message));
+        }
+
+        // Devolver el error original para preservar toda la información
+        return Promise.reject(error);
     }
 );
 

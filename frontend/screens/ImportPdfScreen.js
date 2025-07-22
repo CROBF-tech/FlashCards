@@ -16,29 +16,36 @@ import { AntDesign, MaterialIcons } from '@expo/vector-icons';
 import * as DocumentPicker from 'expo-document-picker';
 import { theme, styles as globalStyles } from '../theme';
 import api from '../utils/api';
+import { validatePdfFile, formatFileSize, getOptimizationSuggestions } from '../utils/pdfUtils';
 
 export default function ImportPdfScreen({ route, navigation }) {
     const { deckId, deckName } = route.params;
     const [loading, setLoading] = useState(false);
-    const [processing, setProcessing] = useState(false);
     const [selectedFile, setSelectedFile] = useState(null);
     const [options, setOptions] = useState({
         cardCount: 10,
         difficulty: 'medium',
         focus: 'general',
     });
-    const [importStatus, setImportStatus] = useState(null);
     const [showOptionsModal, setShowOptionsModal] = useState(false);
+    const [showSuccessMessage, setShowSuccessMessage] = useState(false);
+    const [successData, setSuccessData] = useState(null);
 
     useEffect(() => {
-        if (importStatus && importStatus.id) {
-            const interval = setInterval(() => {
-                checkImportStatus(importStatus.id);
-            }, 2000);
+        // Verificar conectividad con el backend al montar el componente
+        const checkBackendConnection = async () => {
+            try {
+                console.log('Verificando conexión con el backend...');
+                const response = await api.get('/health');
+                console.log('Backend conectado:', response.data);
+            } catch (error) {
+                console.warn('Error al conectar con el backend:', error.message);
+                console.warn('Esto puede indicar problemas de conectividad');
+            }
+        };
 
-            return () => clearInterval(interval);
-        }
-    }, [importStatus]);
+        checkBackendConnection();
+    }, []);
 
     const pickDocument = async () => {
         try {
@@ -49,11 +56,22 @@ export default function ImportPdfScreen({ route, navigation }) {
 
             if (!result.canceled && result.assets && result.assets.length > 0) {
                 const file = result.assets[0];
-                if (file.size > 10 * 1024 * 1024) {
-                    Alert.alert('Error', 'El archivo es muy grande. Máximo 10MB permitido.');
+
+                // Validar archivo usando las nuevas utilidades
+                const validation = validatePdfFile(file);
+
+                if (!validation.isValid) {
+                    Alert.alert('Error', validation.errors.join('\n'));
                     return;
                 }
+
                 setSelectedFile(file);
+
+                // Mostrar sugerencias de optimización si las hay
+                const suggestions = getOptimizationSuggestions(file);
+                if (suggestions.length > 0) {
+                    console.log('Sugerencias de optimización:', suggestions);
+                }
             }
         } catch (error) {
             console.error('Error al seleccionar archivo:', error);
@@ -67,83 +85,229 @@ export default function ImportPdfScreen({ route, navigation }) {
             return;
         }
 
+        // Validación adicional del archivo
+        if (!selectedFile.uri) {
+            Alert.alert('Error', 'Archivo inválido. Por favor selecciona otro archivo.');
+            return;
+        }
+
+        // Verificar que deckId sea válido
+        if (!deckId || isNaN(deckId)) {
+            Alert.alert('Error', 'ID del mazo inválido. Por favor intenta nuevamente.');
+            return;
+        }
+
         setLoading(true);
-        setProcessing(true);
 
         try {
+            // Crear FormData específico para React Native/Web
             const formData = new FormData();
-            formData.append('pdf', {
-                uri: selectedFile.uri,
-                type: 'application/pdf',
-                name: selectedFile.name,
-            });
-            formData.append('deckId', deckId.toString());
-            formData.append('cardCount', options.cardCount.toString());
-            formData.append('difficulty', options.difficulty);
-            formData.append('focus', options.focus);
 
+            // Diferente manejo para Web vs React Native
+            if (Platform.OS === 'web') {
+                // En Web, necesitamos crear un File object
+                try {
+                    const response = await fetch(selectedFile.uri);
+                    const blob = await response.blob();
+                    const file = new File([blob], selectedFile.name || 'document.pdf', {
+                        type: selectedFile.mimeType || 'application/pdf',
+                    });
+                    formData.append('pdf', file);
+                    console.log('Archivo agregado para Web:', file);
+                } catch (fetchError) {
+                    console.error('Error al convertir archivo para Web:', fetchError);
+                    throw new Error('No se pudo procesar el archivo para upload');
+                }
+            } else {
+                // En React Native móvil
+                formData.append('pdf', {
+                    uri: selectedFile.uri,
+                    type: selectedFile.mimeType || 'application/pdf',
+                    name: selectedFile.name || 'document.pdf',
+                });
+                console.log('Archivo agregado para React Native móvil');
+            }
+
+            // Agregar otros campos como strings
+            formData.append('deckId', String(deckId));
+            formData.append('cardCount', String(options.cardCount));
+            formData.append('difficulty', String(options.difficulty));
+            formData.append('focus', String(options.focus));
+
+            console.log('Enviando PDF al backend:', {
+                fileName: selectedFile.name,
+                fileSize: selectedFile.size,
+                mimeType: selectedFile.mimeType,
+                uri: selectedFile.uri,
+                deckId: deckId,
+                options: options,
+                platform: Platform.OS,
+            });
+
+            // Debug del FormData (solo para desarrollo)
+            console.log('FormData creado con:');
+            console.log('- Archivo:', selectedFile.name, selectedFile.size, 'bytes');
+            console.log('- DeckId:', deckId);
+            console.log('- Opciones:', options);
+            console.log('- Plataforma:', Platform.OS);
+
+            // Verificar que el FormData contiene el archivo
+            console.log('Verificando contenido del FormData...');
+            debugFormData(formData);
+
+            // Verificar que el archivo tiene URI válida
+            if (!selectedFile.uri || selectedFile.uri.trim() === '') {
+                throw new Error('El archivo seleccionado no tiene una URI válida');
+            }
+
+            // Hacer la petición con configuración optimizada para React Native
+            console.log('Enviando petición a:', '/pdf/upload');
+            console.log('Base URL del API:', api.defaults.baseURL);
+            console.log('URL completa:', api.defaults.baseURL + '/pdf/upload');
             const response = await api.post('/pdf/upload', formData, {
                 headers: {
-                    'Content-Type': 'multipart/form-data',
+                    // En React Native, axios maneja automáticamente el Content-Type para FormData
+                    Accept: 'application/json',
                 },
+                timeout: 120000, // 2 minutos para archivos grandes
             });
 
+            console.log('Respuesta del servidor:', response.data);
+
             if (response.data.success) {
-                setImportStatus({
-                    id: response.data.importId,
-                    status: 'processing',
-                    message: 'Procesando PDF...',
+                // Procesamiento completado exitosamente
+                setSuccessData({
+                    cardsGenerated: response.data.cardsGenerated,
+                    fileName: selectedFile.name,
                 });
+                setShowSuccessMessage(true);
+                setLoading(false);
             }
         } catch (error) {
-            console.error('Error al subir PDF:', error);
-            Alert.alert('Error', error.response?.data?.error || 'Error al procesar el PDF');
-            setProcessing(false);
+            console.error('Error al subir PDF (completo):', error);
+            console.error('Error response:', error.response);
+            console.error('Error request:', error.request);
+            console.error('Error config:', error.config);
+
+            // Manejo mejorado de errores del backend
+            let errorMessage = 'Error al procesar el PDF';
+            let statusCode = null;
+
+            // Obtener información más detallada del error
+            if (error.response) {
+                // El servidor respondió con un código de error
+                statusCode = error.response.status;
+                console.error('Status Code:', statusCode);
+                console.error('Response Data:', error.response.data);
+                console.error('Response Headers:', error.response.headers);
+
+                if (error.response.data?.error) {
+                    errorMessage = error.response.data.error;
+                } else if (error.response.data?.message) {
+                    errorMessage = error.response.data.message;
+                } else if (typeof error.response.data === 'string') {
+                    errorMessage = error.response.data;
+                }
+            } else if (error.request) {
+                // La petición se hizo pero no hubo respuesta
+                console.error('No response received:', error.request);
+                errorMessage = 'No se pudo conectar al servidor. Verifica tu conexión a internet.';
+            } else {
+                // Error en la configuración de la petición
+                console.error('Request setup error:', error.message);
+                if (error.message) {
+                    errorMessage = error.message;
+                }
+            }
+
+            // Errores específicos basados en códigos del backend
+            if (error.response?.data?.code) {
+                switch (error.response.data.code) {
+                    case 'NO_FILE':
+                        errorMessage = 'No se proporcionó archivo PDF';
+                        break;
+                    case 'MISSING_DECK_ID':
+                        errorMessage = 'Error: ID del mazo es requerido';
+                        break;
+                    case 'FILE_TOO_LARGE':
+                        errorMessage = 'El archivo PDF es demasiado grande (máximo 10MB)';
+                        break;
+                    case 'DECK_NOT_FOUND':
+                        errorMessage = 'Mazo no encontrado o no tienes permisos para acceder a él';
+                        break;
+                    case 'PDF_PROCESSING_ERROR':
+                        errorMessage = 'Error procesando el archivo PDF. Verifica que el archivo no esté dañado.';
+                        break;
+                    case 'INTERNAL_ERROR':
+                        errorMessage = 'Error interno del servidor. Intenta nuevamente.';
+                        break;
+                }
+            }
+
+            // Agregar información del código de estado si está disponible
+            if (statusCode) {
+                errorMessage += ` (Código: ${statusCode})`;
+            }
+
+            Alert.alert('Error', errorMessage);
         } finally {
             setLoading(false);
         }
     };
 
-    const checkImportStatus = async (importId) => {
+    const debugFormData = (formData) => {
+        console.log('=== DEBUG FORMDATA ===');
         try {
-            const response = await api.get(`/pdf/import/${importId}/status`);
-            const status = response.data;
-
-            setImportStatus((prev) => ({
-                ...prev,
-                ...status,
-                message: getStatusMessage(status.status, status.cardsGenerated),
-            }));
-
-            if (status.status === 'completed') {
-                setProcessing(false);
-                Alert.alert('Éxito', `Se generaron ${status.cardsGenerated} flashcards exitosamente`, [
-                    {
-                        text: 'Ver Mazo',
-                        onPress: () => navigation.goBack(),
-                    },
-                ]);
-            } else if (status.status === 'failed') {
-                setProcessing(false);
-                Alert.alert('Error', status.errorMessage || 'Error al procesar el PDF');
+            // Intentar enumerar el contenido del FormData
+            let hasFile = false;
+            for (let pair of formData.entries()) {
+                console.log(`Campo: ${pair[0]}`);
+                if (pair[0] === 'pdf') {
+                    hasFile = true;
+                    console.log('Tipo de archivo:', typeof pair[1]);
+                    console.log('Archivo encontrado:', pair[1]);
+                    if (pair[1] instanceof File) {
+                        console.log('Es un File object');
+                        console.log('- Nombre:', pair[1].name);
+                        console.log('- Tamaño:', pair[1].size);
+                        console.log('- Tipo:', pair[1].type);
+                    } else if (typeof pair[1] === 'object') {
+                        console.log('Es un objeto:', pair[1]);
+                    }
+                } else {
+                    console.log('Valor:', pair[1]);
+                }
             }
+            console.log('¿Tiene archivo PDF?', hasFile);
         } catch (error) {
-            console.error('Error al verificar estado:', error);
+            console.error('Error al debuggear FormData:', error);
         }
+        console.log('=== FIN DEBUG ===');
     };
 
-    const getStatusMessage = (status, cardsGenerated) => {
-        switch (status) {
-            case 'processing':
-                return 'Analizando contenido del PDF...';
-            case 'generating':
-                return 'Generando flashcards con IA...';
-            case 'completed':
-                return `¡Completado! ${cardsGenerated} flashcards generadas`;
-            case 'failed':
-                return 'Error en el procesamiento';
-            default:
-                return 'Procesando...';
+    const testBackendConnection = async () => {
+        try {
+            console.log('Testeando conexión completa...');
+
+            // Test 1: Health check
+            const healthResponse = await api.get('/health');
+            console.log('✅ Health check exitoso:', healthResponse.data);
+
+            // Test 2: Verificar que la ruta PDF existe (sin archivo)
+            try {
+                await api.post('/pdf/upload', {});
+            } catch (error) {
+                if (error.response?.status === 400 && error.response?.data?.code === 'NO_FILE') {
+                    console.log('✅ Endpoint /pdf/upload existe y responde correctamente');
+                } else {
+                    console.log('❌ Error inesperado en endpoint PDF:', error.response?.data);
+                }
+            }
+
+            Alert.alert('Test Completado', 'Revisa la consola para ver los resultados');
+        } catch (error) {
+            console.error('❌ Error en test de conexión:', error);
+            Alert.alert('Error de Conexión', 'No se pudo conectar al backend. Revisa la consola.');
         }
     };
 
@@ -177,110 +341,64 @@ export default function ImportPdfScreen({ route, navigation }) {
                         <Text style={styles.deckName}>{deckName}</Text>
                     </View>
 
-                    {!processing ? (
-                        <View style={styles.formContainer}>
-                            {/* Selección de archivo */}
-                            <View style={styles.inputGroup}>
-                                <Text style={styles.label}>1. Seleccionar PDF</Text>
-                                <TouchableOpacity style={styles.fileSelector} onPress={pickDocument}>
-                                    <AntDesign
-                                        name={selectedFile ? 'checkcircle' : 'plus'}
-                                        size={24}
-                                        color={selectedFile ? theme.colors.success : theme.colors.primary}
-                                    />
-                                    <Text style={[styles.fileSelectorText, selectedFile && styles.selectedFileText]}>
-                                        {selectedFile ? selectedFile.name : 'Toca para seleccionar archivo PDF'}
-                                    </Text>
-                                </TouchableOpacity>
-                                {selectedFile && (
-                                    <Text style={styles.fileSize}>
-                                        Tamaño: {(selectedFile.size / 1024 / 1024).toFixed(2)} MB
-                                    </Text>
-                                )}
-                            </View>
+                    <View style={styles.formContainer}>
+                        {/* Selección de archivo */}
+                        <View style={styles.inputGroup}>
+                            <Text style={styles.label}>1. Seleccionar PDF</Text>
+                            <TouchableOpacity style={styles.fileSelector} onPress={pickDocument}>
+                                <AntDesign
+                                    name={selectedFile ? 'checkcircle' : 'plus'}
+                                    size={24}
+                                    color={selectedFile ? theme.colors.success : theme.colors.primary}
+                                />
+                                <Text style={[styles.fileSelectorText, selectedFile && styles.selectedFileText]}>
+                                    {selectedFile ? selectedFile.name : 'Toca para seleccionar archivo PDF'}
+                                </Text>
+                            </TouchableOpacity>
+                            {selectedFile && (
+                                <Text style={styles.fileSize}>Tamaño: {formatFileSize(selectedFile.size)}</Text>
+                            )}
+                        </View>
 
-                            {/* Opciones de generación */}
-                            <View style={styles.inputGroup}>
-                                <Text style={styles.label}>2. Opciones de Generación</Text>
-                                <TouchableOpacity
-                                    style={styles.optionsButton}
-                                    onPress={() => setShowOptionsModal(true)}
-                                >
-                                    <View>
-                                        <Text style={styles.optionsButtonTitle}>Configurar Opciones</Text>
-                                        <Text style={styles.optionsButtonSubtitle}>
-                                            {options.cardCount} tarjetas •{' '}
-                                            {difficultyOptions.find((d) => d.value === options.difficulty)?.label} •
-                                            {focusOptions.find((f) => f.value === options.focus)?.label}
-                                        </Text>
-                                    </View>
-                                    <AntDesign name="right" size={16} color={theme.colors.text.secondary} />
-                                </TouchableOpacity>
-                            </View>
-
-                            {/* Botón de generar */}
-                            <TouchableOpacity
-                                style={[styles.submitButton, !selectedFile && styles.submitButtonDisabled]}
-                                onPress={uploadPdf}
-                                disabled={!selectedFile || loading}
-                            >
-                                {loading ? (
-                                    <ActivityIndicator
-                                        color={theme.colors.text.primary}
-                                        size="small"
-                                        style={styles.submitButtonIcon}
-                                    />
-                                ) : (
-                                    <MaterialIcons
-                                        name="auto-awesome"
-                                        size={24}
-                                        color={theme.colors.text.primary}
-                                        style={styles.submitButtonIcon}
-                                    />
-                                )}
-                                <Text style={styles.submitButtonText}>Generar Flashcards con IA</Text>
+                        {/* Opciones de generación */}
+                        <View style={styles.inputGroup}>
+                            <Text style={styles.label}>2. Opciones de Generación</Text>
+                            <TouchableOpacity style={styles.optionsButton} onPress={() => setShowOptionsModal(true)}>
+                                <View>
+                                    <Text style={styles.optionsButtonTitle}>Configurar Opciones</Text>
+                                    <Text style={styles.optionsButtonSubtitle}>
+                                        {options.cardCount} tarjetas •{' '}
+                                        {difficultyOptions.find((d) => d.value === options.difficulty)?.label} •
+                                        {focusOptions.find((f) => f.value === options.focus)?.label}
+                                    </Text>
+                                </View>
+                                <AntDesign name="right" size={16} color={theme.colors.text.secondary} />
                             </TouchableOpacity>
                         </View>
-                    ) : (
-                        /* Estado de procesamiento */
-                        <View style={styles.processingContainer}>
-                            <ActivityIndicator size="large" color={theme.colors.primary} />
-                            <Text style={styles.processingTitle}>Procesando PDF</Text>
-                            <Text style={styles.processingMessage}>
-                                {importStatus?.message || 'Analizando contenido...'}
-                            </Text>
-                            <View style={styles.processingSteps}>
-                                <View style={styles.step}>
-                                    <AntDesign name="checkcircle" size={20} color={theme.colors.success} />
-                                    <Text style={styles.stepText}>PDF subido</Text>
-                                </View>
-                                <View style={styles.step}>
-                                    <AntDesign
-                                        name={importStatus?.status !== 'processing' ? 'checkcircle' : 'loading1'}
-                                        size={20}
-                                        color={
-                                            importStatus?.status !== 'processing'
-                                                ? theme.colors.success
-                                                : theme.colors.primary
-                                        }
-                                    />
-                                    <Text style={styles.stepText}>Extrayendo texto</Text>
-                                </View>
-                                <View style={styles.step}>
-                                    <AntDesign
-                                        name={importStatus?.status === 'completed' ? 'checkcircle' : 'loading1'}
-                                        size={20}
-                                        color={
-                                            importStatus?.status === 'completed'
-                                                ? theme.colors.success
-                                                : theme.colors.text.secondary
-                                        }
-                                    />
-                                    <Text style={styles.stepText}>Generando flashcards</Text>
-                                </View>
-                            </View>
-                        </View>
-                    )}
+
+                        {/* Botón de generar */}
+                        <TouchableOpacity
+                            style={[styles.submitButton, !selectedFile && styles.submitButtonDisabled]}
+                            onPress={uploadPdf}
+                            disabled={!selectedFile || loading}
+                        >
+                            {loading ? (
+                                <ActivityIndicator
+                                    color={theme.colors.text.primary}
+                                    size="small"
+                                    style={styles.submitButtonIcon}
+                                />
+                            ) : (
+                                <MaterialIcons
+                                    name="auto-awesome"
+                                    size={24}
+                                    color={theme.colors.text.primary}
+                                    style={styles.submitButtonIcon}
+                                />
+                            )}
+                            <Text style={styles.submitButtonText}>Generar Flashcards con IA</Text>
+                        </TouchableOpacity>
+                    </View>
                 </ScrollView>
             </KeyboardAvoidingView>
 
@@ -395,6 +513,53 @@ export default function ImportPdfScreen({ route, navigation }) {
                     </View>
                 </View>
             </Modal>
+
+            {/* Modal de mensaje de éxito */}
+            <Modal
+                visible={showSuccessMessage}
+                transparent={true}
+                animationType="fade"
+                onRequestClose={() => setShowSuccessMessage(false)}
+            >
+                <View style={styles.successModalOverlay}>
+                    <View style={styles.successModalContent}>
+                        <View style={styles.successIconContainer}>
+                            <AntDesign name="checkcircle" size={60} color={theme.colors.success} />
+                        </View>
+
+                        <Text style={styles.successTitle}>¡Proceso Completado!</Text>
+
+                        <Text style={styles.successMessage}>
+                            Se generaron exitosamente{' '}
+                            <Text style={styles.successNumber}>{successData?.cardsGenerated} flashcards</Text> desde el
+                            archivo <Text style={styles.successFileName}>{successData?.fileName}</Text>
+                        </Text>
+
+                        <View style={styles.successButtons}>
+                            <TouchableOpacity
+                                style={[styles.successButton, styles.successButtonSecondary]}
+                                onPress={() => {
+                                    setShowSuccessMessage(false);
+                                    setSelectedFile(null);
+                                    setSuccessData(null);
+                                }}
+                            >
+                                <Text style={styles.successButtonTextSecondary}>Importar Otro PDF</Text>
+                            </TouchableOpacity>
+
+                            <TouchableOpacity
+                                style={[styles.successButton, styles.successButtonPrimary]}
+                                onPress={() => {
+                                    setShowSuccessMessage(false);
+                                    navigation.goBack();
+                                }}
+                            >
+                                <Text style={styles.successButtonTextPrimary}>Ver Mazo</Text>
+                            </TouchableOpacity>
+                        </View>
+                    </View>
+                </View>
+            </Modal>
         </SafeAreaView>
     );
 }
@@ -494,36 +659,6 @@ const styles = StyleSheet.create({
         color: theme.colors.text.primary,
         fontSize: 16,
         fontWeight: '600',
-    },
-    processingContainer: {
-        alignItems: 'center',
-        padding: theme.spacing.xl * 2,
-    },
-    processingTitle: {
-        fontSize: 20,
-        fontWeight: '600',
-        color: theme.colors.text.primary,
-        marginTop: theme.spacing.lg,
-        marginBottom: theme.spacing.md,
-    },
-    processingMessage: {
-        fontSize: 16,
-        color: theme.colors.text.secondary,
-        textAlign: 'center',
-        marginBottom: theme.spacing.xl,
-    },
-    processingSteps: {
-        width: '100%',
-    },
-    step: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        paddingVertical: theme.spacing.md,
-    },
-    stepText: {
-        fontSize: 16,
-        color: theme.colors.text.primary,
-        marginLeft: theme.spacing.md,
     },
     modalOverlay: {
         flex: 1,
@@ -625,5 +760,75 @@ const styles = StyleSheet.create({
         color: theme.colors.text.primary,
         fontSize: 16,
         fontWeight: '600',
+    },
+    // Estilos del modal de éxito
+    successModalOverlay: {
+        flex: 1,
+        backgroundColor: 'rgba(0, 0, 0, 0.8)',
+        justifyContent: 'center',
+        alignItems: 'center',
+    },
+    successModalContent: {
+        backgroundColor: theme.colors.background.card,
+        borderRadius: theme.borderRadius.xl,
+        padding: theme.spacing.xl * 2,
+        margin: theme.spacing.xl,
+        maxWidth: 350,
+        alignItems: 'center',
+    },
+    successIconContainer: {
+        marginBottom: theme.spacing.xl,
+    },
+    successTitle: {
+        fontSize: 24,
+        fontWeight: '700',
+        color: theme.colors.text.primary,
+        marginBottom: theme.spacing.lg,
+        textAlign: 'center',
+    },
+    successMessage: {
+        fontSize: 16,
+        color: theme.colors.text.secondary,
+        textAlign: 'center',
+        lineHeight: 24,
+        marginBottom: theme.spacing.xl * 1.5,
+    },
+    successNumber: {
+        fontSize: 18,
+        fontWeight: '700',
+        color: theme.colors.success,
+    },
+    successFileName: {
+        fontWeight: '600',
+        color: theme.colors.text.primary,
+        fontStyle: 'italic',
+    },
+    successButtons: {
+        flexDirection: 'row',
+        gap: theme.spacing.md,
+    },
+    successButton: {
+        flex: 1,
+        padding: theme.spacing.lg,
+        borderRadius: theme.borderRadius.md,
+        alignItems: 'center',
+    },
+    successButtonPrimary: {
+        backgroundColor: theme.colors.primary,
+    },
+    successButtonSecondary: {
+        backgroundColor: 'transparent',
+        borderWidth: 1,
+        borderColor: theme.colors.text.secondary,
+    },
+    successButtonTextPrimary: {
+        color: theme.colors.text.primary,
+        fontSize: 16,
+        fontWeight: '600',
+    },
+    successButtonTextSecondary: {
+        color: theme.colors.text.secondary,
+        fontSize: 16,
+        fontWeight: '500',
     },
 });

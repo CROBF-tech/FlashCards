@@ -1,6 +1,6 @@
 /**
  * Extrae texto de un buffer PDF con manejo robusto de errores
- * @param {Buffer} pdfBuffer - Buffer del archivo PDF
+ * @param {Buffer} pdfBuffer - Buffer del archivo PDF (puede ser desde memoria o leído desde disco)
  * @returns {Promise<string>} - Texto extraído del PDF
  */
 export async function extractTextFromPdf(pdfBuffer) {
@@ -15,6 +15,8 @@ export async function extractTextFromPdf(pdfBuffer) {
         if (!pdfHeader.startsWith('%PDF')) {
             throw new Error('El archivo no parece ser un PDF válido');
         }
+
+        console.log(`Procesando PDF de ${pdfBuffer.length} bytes`);
 
         // Importación dinámica con configuración específica para Vercel
         const pdfParse = (await import('pdf-parse')).default;
@@ -52,5 +54,21 @@ export async function extractTextFromPdf(pdfBuffer) {
     } catch (error) {
         console.error('Error al extraer texto del PDF:', error.message);
         throw new Error(`No se pudo extraer texto del PDF: ${error.message}`);
+    }
+}
+
+/**
+ * Extrae texto directamente de un archivo PDF usando su ruta
+ * @param {string} filePath - Ruta al archivo PDF
+ * @returns {Promise<string>} - Texto extraído del PDF
+ */
+export async function extractTextFromPdfFile(filePath) {
+    try {
+        const fs = await import('fs/promises');
+        const pdfBuffer = await fs.readFile(filePath);
+        return await extractTextFromPdf(pdfBuffer);
+    } catch (error) {
+        console.error('Error al leer y extraer texto del archivo PDF:', error.message);
+        throw new Error(`No se pudo leer el archivo PDF: ${error.message}`);
     }
 }
