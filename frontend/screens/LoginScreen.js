@@ -49,8 +49,9 @@ export default function LoginScreen({ navigation }) {
         }
     };
 
-    const openPlayStore = () => {
-        Linking.openURL('https://play.google.com/store/apps/details?id=tech.crobf.flashcards');
+    const openAPKDownload = () => {
+        const apkUrl = '/apk/flashcard1.5.apk'; // Adjust the path as needed
+        Linking.openURL(apkUrl);
     };
 
     return (
@@ -159,9 +160,9 @@ export default function LoginScreen({ navigation }) {
                         <View style={styles.modalButtons}>
                             <TouchableOpacity
                                 style={[styles.modalButton, styles.downloadButton]}
-                                onPress={openPlayStore}
+                                onPress={openAPKDownload}
                             >
-                                <Text style={styles.downloadButtonText}>Descargar App</Text>
+                                <Text style={styles.downloadButtonText}>Descargar APK</Text>
                             </TouchableOpacity>
                             <TouchableOpacity
                                 style={[styles.modalButton, styles.cancelButton]}
