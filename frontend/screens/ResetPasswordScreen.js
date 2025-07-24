@@ -11,6 +11,7 @@ import {
     ActivityIndicator,
     Alert,
 } from 'react-native';
+import WebAlert from '../components/WebAlert';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation, useRoute } from '@react-navigation/native';
 import api from '../utils/api';
@@ -29,7 +30,9 @@ const ResetPasswordScreen = () => {
     const handleResetPassword = async () => {
         if (password !== confirmPassword) {
             setMessage('Contraseñas no coinciden');
-            Alert.alert('Error', 'Contraseñas no coinciden');
+            // Usar WebAlert en web y Alert nativo en otras plataformas
+            const AlertToUse = Platform.OS === 'web' ? WebAlert : Alert;
+            AlertToUse.alert('Error', 'Contraseñas no coinciden');
             return;
         }
 
@@ -38,12 +41,16 @@ const ResetPasswordScreen = () => {
             const response = await api.post('/user/reset-password', { email, resetCode, password });
             const msg = response.data.message;
             setMessage(msg);
-            Alert.alert('Éxito', msg);
+            // Usar WebAlert en web y Alert nativo en otras plataformas
+            const AlertToUse = Platform.OS === 'web' ? WebAlert : Alert;
+            AlertToUse.alert('Éxito', msg);
             navigation.navigate('Login');
         } catch (error) {
             console.error('Error:', error);
             setMessage('Un error a ocurrido. Por favor, intente nuevamente.');
-            Alert.alert('Error', 'Un error a ocurrido. Por favor, intente nuevamente.');
+            // Usar WebAlert en web y Alert nativo en otras plataformas
+            const AlertToUse = Platform.OS === 'web' ? WebAlert : Alert;
+            AlertToUse.alert('Error', 'Un error a ocurrido. Por favor, intente nuevamente.');
         } finally {
             setIsSubmitting(false);
         }

@@ -1,5 +1,6 @@
 import React, { useContext } from 'react';
-import { View, StyleSheet, Alert, TouchableOpacity, Text, ScrollView } from 'react-native';
+import { View, StyleSheet, Alert, TouchableOpacity, Text, ScrollView, Platform } from 'react-native';
+import WebAlert from '../components/WebAlert';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { AntDesign } from '@expo/vector-icons';
 import { AuthContext } from '../context/AuthContext';
@@ -15,12 +16,17 @@ const SettingsScreen = ({ navigation }) => {
             // La navegación se maneja automáticamente por el cambio en isAuthenticated
         } catch (error) {
             console.error('Error al cerrar sesión:', error);
-            Alert.alert('Error', 'No se pudo cerrar la sesión. Por favor, intenta nuevamente.');
+            // Usar WebAlert en web y Alert nativo en otras plataformas
+            const AlertToUse = Platform.OS === 'web' ? WebAlert : Alert;
+            AlertToUse.alert('Error', 'No se pudo cerrar la sesión. Por favor, intenta nuevamente.');
         }
     };
 
     const handleDeleteAccount = () => {
-        Alert.alert(
+        // Usar WebAlert en web y Alert nativo en otras plataformas
+        const AlertToUse = Platform.OS === 'web' ? WebAlert : Alert;
+        
+        AlertToUse.alert(
             'Eliminar cuenta',
             '¿Estás seguro que deseas eliminar tu cuenta? Esta acción no se puede deshacer.',
             [
@@ -53,7 +59,7 @@ const SettingsScreen = ({ navigation }) => {
                                 }
                             }
 
-                            Alert.alert('Error', errorMessage);
+                            AlertToUse.alert('Error', errorMessage);
                         }
                     },
                 },

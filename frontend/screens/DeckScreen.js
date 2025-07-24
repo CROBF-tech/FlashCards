@@ -1,6 +1,7 @@
 // screens/DeckScreen.js
 import React, { useState, useEffect } from 'react';
-import { View, Text, FlatList, TouchableOpacity, Alert, ActivityIndicator, StyleSheet, Animated } from 'react-native';
+import { View, Text, FlatList, TouchableOpacity, Alert, ActivityIndicator, StyleSheet, Animated, Platform } from 'react-native';
+import WebAlert from '../components/WebAlert';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { AntDesign } from '@expo/vector-icons';
 import api from '../utils/api';
@@ -42,7 +43,10 @@ export default function DeckScreen({ route, navigation }) {
     };
 
     const deleteDeck = () => {
-        Alert.alert(
+        // Usar WebAlert en web y Alert nativo en otras plataformas
+        const AlertToUse = Platform.OS === 'web' ? WebAlert : Alert;
+        
+        AlertToUse.alert(
             'Eliminar Mazo',
             '¿Estás seguro de que quieres eliminar este mazo? Esta acción no se puede deshacer.',
             [
@@ -58,7 +62,7 @@ export default function DeckScreen({ route, navigation }) {
                             await api.delete(`/decks/${deckId}`);
                             navigation.goBack();
                         } catch (err) {
-                            Alert.alert('Error', 'No se pudo eliminar el mazo.');
+                            AlertToUse.alert('Error', 'No se pudo eliminar el mazo.');
                         }
                     },
                 },
@@ -67,7 +71,10 @@ export default function DeckScreen({ route, navigation }) {
     };
 
     const deleteCard = (cardId) => {
-        Alert.alert('Eliminar Tarjeta', '¿Estás seguro de que quieres eliminar esta tarjeta?', [
+        // Usar WebAlert en web y Alert nativo en otras plataformas
+        const AlertToUse = Platform.OS === 'web' ? WebAlert : Alert;
+        
+        AlertToUse.alert('Eliminar Tarjeta', '¿Estás seguro de que quieres eliminar esta tarjeta?', [
             {
                 text: 'Cancelar',
                 style: 'cancel',
@@ -80,7 +87,7 @@ export default function DeckScreen({ route, navigation }) {
                         await api.delete(`/cards/${cardId}`);
                         fetchDeckDetails();
                     } catch (err) {
-                        Alert.alert('Error', 'No se pudo eliminar la tarjeta.');
+                        AlertToUse.alert('Error', 'No se pudo eliminar la tarjeta.');
                     }
                 },
             },

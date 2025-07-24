@@ -11,6 +11,7 @@ import {
     KeyboardAvoidingView,
     Platform,
 } from 'react-native';
+import WebAlert from '../components/WebAlert';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { AntDesign, MaterialIcons } from '@expo/vector-icons';
 import * as DocumentPicker from 'expo-document-picker';
@@ -61,7 +62,9 @@ export default function ImportPdfScreen({ route, navigation }) {
                 const validation = validatePdfFile(file);
 
                 if (!validation.isValid) {
-                    Alert.alert('Error', validation.errors.join('\n'));
+                    // Usar WebAlert en web y Alert nativo en otras plataformas
+                    const AlertToUse = Platform.OS === 'web' ? WebAlert : Alert;
+                    AlertToUse.alert('Error', validation.errors.join('\n'));
                     return;
                 }
 
@@ -75,25 +78,33 @@ export default function ImportPdfScreen({ route, navigation }) {
             }
         } catch (error) {
             console.error('Error al seleccionar archivo:', error);
-            Alert.alert('Error', 'No se pudo seleccionar el archivo');
+            // Usar WebAlert en web y Alert nativo en otras plataformas
+            const AlertToUse = Platform.OS === 'web' ? WebAlert : Alert;
+            AlertToUse.alert('Error', 'No se pudo seleccionar el archivo');
         }
     };
 
     const uploadPdf = async () => {
         if (!selectedFile) {
-            Alert.alert('Error', 'Por favor selecciona un archivo PDF');
+            // Usar WebAlert en web y Alert nativo en otras plataformas
+            const AlertToUse = Platform.OS === 'web' ? WebAlert : Alert;
+            AlertToUse.alert('Error', 'Por favor selecciona un archivo PDF');
             return;
         }
 
         // Validación adicional del archivo
         if (!selectedFile.uri) {
-            Alert.alert('Error', 'Archivo inválido. Por favor selecciona otro archivo.');
+            // Usar WebAlert en web y Alert nativo en otras plataformas
+            const AlertToUse = Platform.OS === 'web' ? WebAlert : Alert;
+            AlertToUse.alert('Error', 'Archivo inválido. Por favor selecciona otro archivo.');
             return;
         }
 
         // Verificar que deckId sea válido
         if (!deckId || isNaN(deckId)) {
-            Alert.alert('Error', 'ID del mazo inválido. Por favor intenta nuevamente.');
+            // Usar WebAlert en web y Alert nativo en otras plataformas
+            const AlertToUse = Platform.OS === 'web' ? WebAlert : Alert;
+            AlertToUse.alert('Error', 'ID del mazo inválido. Por favor intenta nuevamente.');
             return;
         }
 
@@ -120,12 +131,24 @@ export default function ImportPdfScreen({ route, navigation }) {
                 }
             } else {
                 // En React Native móvil
-                formData.append('pdf', {
+                // Asegurarse de que todos los campos necesarios estén presentes
+                const fileData = {
                     uri: selectedFile.uri,
                     type: selectedFile.mimeType || 'application/pdf',
                     name: selectedFile.name || 'document.pdf',
-                });
-                console.log('Archivo agregado para React Native móvil');
+                    // Agregar estos campos adicionales para asegurar compatibilidad
+                    size: selectedFile.size,
+                };
+                
+                // En React Native, el campo debe llamarse exactamente igual que en el backend (pdf)
+                formData.append('pdf', fileData);
+                
+                // Verificar que la URI es absoluta y accesible
+                if (!selectedFile.uri.startsWith('file://') && !selectedFile.uri.startsWith('content://')) {
+                    console.warn('La URI del archivo no parece ser una ruta absoluta:', selectedFile.uri);
+                }
+                
+                console.log('Archivo agregado para React Native móvil:', fileData);
             }
 
             // Agregar otros campos como strings
@@ -164,11 +187,21 @@ export default function ImportPdfScreen({ route, navigation }) {
             console.log('Enviando petición a:', '/pdf/upload');
             console.log('Base URL del API:', api.defaults.baseURL);
             console.log('URL completa:', api.defaults.baseURL + '/pdf/upload');
+            
+            // Configuración específica para dispositivos móviles
+            const headers = {
+                Accept: 'application/json',
+            };
+            
+            // En Android, a veces es necesario establecer explícitamente el Content-Type
+            if (Platform.OS === 'android') {
+                headers['Content-Type'] = 'multipart/form-data';
+            }
+            
+            console.log('Headers de la petición:', headers);
+            
             const response = await api.post('/pdf/upload', formData, {
-                headers: {
-                    // En React Native, axios maneja automáticamente el Content-Type para FormData
-                    Accept: 'application/json',
-                },
+                headers: headers,
                 timeout: 120000, // 2 minutos para archivos grandes
             });
 
@@ -192,6 +225,10 @@ export default function ImportPdfScreen({ route, navigation }) {
             // Manejo mejorado de errores del backend
             let errorMessage = 'Error al procesar el PDF';
             let statusCode = null;
+            
+            // Información específica de la plataforma para depuración
+            console.error('Error en plataforma:', Platform.OS);
+            console.error('Versión de plataforma:', Platform.Version);
 
             // Obtener información más detallada del error
             if (error.response) {
@@ -212,11 +249,32 @@ export default function ImportPdfScreen({ route, navigation }) {
                 // La petición se hizo pero no hubo respuesta
                 console.error('No response received:', error.request);
                 errorMessage = 'No se pudo conectar al servidor. Verifica tu conexión a internet.';
+                
+                // Errores específicos para dispositivos móviles
+                if (Platform.OS === 'android' || Platform.OS === 'ios') {
+                    errorMessage = 'No se pudo conectar al servidor. Verifica tu conexión a internet y asegúrate de que la aplicación tenga permisos para acceder a archivos.';
+                }
             } else {
                 // Error en la configuración de la petición
                 console.error('Request setup error:', error.message);
                 if (error.message) {
                     errorMessage = error.message;
+                }
+                
+                // Errores específicos para FormData en dispositivos móviles
+                if (error.message?.includes('FormData') || error.message?.includes('form-data')) {
+                    errorMessage = 'Error al preparar el archivo para envío. Por favor, intenta con otro archivo PDF.';
+                }
+            }
+            
+            // Errores específicos para problemas comunes en dispositivos móviles
+            if (Platform.OS !== 'web') {
+                if (error.message?.includes('Network Error') || error.message?.includes('network') || error.code === 'ERR_NETWORK') {
+                    errorMessage = 'Error de red. Verifica tu conexión a internet y que el servidor esté disponible.';
+                } else if (error.message?.includes('timeout') || error.code === 'ECONNABORTED') {
+                    errorMessage = 'La conexión ha tardado demasiado. El archivo puede ser muy grande o tu conexión es lenta.';
+                } else if (error.message?.includes('permission') || error.message?.includes('permiso')) {
+                    errorMessage = 'Error de permisos. Asegúrate de que la aplicación tenga permisos para acceder a archivos.';
                 }
             }
 
@@ -249,7 +307,9 @@ export default function ImportPdfScreen({ route, navigation }) {
                 errorMessage += ` (Código: ${statusCode})`;
             }
 
-            Alert.alert('Error', errorMessage);
+            // Usar WebAlert en web y Alert nativo en otras plataformas
+            const AlertToUse = Platform.OS === 'web' ? WebAlert : Alert;
+            AlertToUse.alert('Error', errorMessage);
         } finally {
             setLoading(false);
         }
@@ -260,7 +320,40 @@ export default function ImportPdfScreen({ route, navigation }) {
         try {
             // Intentar enumerar el contenido del FormData
             let hasFile = false;
-            for (let pair of formData.entries()) {
+            let entries = [];
+            
+            try {
+                // En algunas versiones de React Native, formData.entries() puede no estar disponible
+                entries = Array.from(formData.entries());
+            } catch (entriesError) {
+                console.warn('No se pudo usar formData.entries():', entriesError.message);
+                console.log('Intentando método alternativo para inspeccionar FormData...');
+                
+                // Método alternativo para plataformas móviles
+                if (Platform.OS !== 'web') {
+                    console.log('FormData en plataforma móvil:', formData);
+                    // Intentar acceder a las propiedades internas del FormData
+                    const formDataStr = formData.toString();
+                    console.log('FormData como string:', formDataStr);
+                    
+                    // Verificar si el FormData tiene la propiedad _parts (común en implementaciones de React Native)
+                    if (formData._parts) {
+                        console.log('FormData._parts:', formData._parts);
+                        formData._parts.forEach(part => {
+                            if (part && part.length >= 2) {
+                                const [fieldName, value] = part;
+                                if (fieldName === 'pdf') {
+                                    hasFile = true;
+                                    console.log('Archivo encontrado en _parts:', value);
+                                }
+                            }
+                        });
+                    }
+                }
+            }
+            
+            // Procesar las entradas si se pudieron obtener
+            for (let pair of entries) {
                 console.log(`Campo: ${pair[0]}`);
                 if (pair[0] === 'pdf') {
                     hasFile = true;
@@ -273,12 +366,22 @@ export default function ImportPdfScreen({ route, navigation }) {
                         console.log('- Tipo:', pair[1].type);
                     } else if (typeof pair[1] === 'object') {
                         console.log('Es un objeto:', pair[1]);
+                        // Mostrar propiedades específicas para depuración
+                        console.log('- URI:', pair[1].uri);
+                        console.log('- Nombre:', pair[1].name);
+                        console.log('- Tipo:', pair[1].type);
+                        console.log('- Tamaño:', pair[1].size);
                     }
                 } else {
                     console.log('Valor:', pair[1]);
                 }
             }
+            
             console.log('¿Tiene archivo PDF?', hasFile);
+            
+            // Información adicional de la plataforma
+            console.log('Plataforma:', Platform.OS);
+            console.log('Versión:', Platform.Version);
         } catch (error) {
             console.error('Error al debuggear FormData:', error);
         }
@@ -304,10 +407,14 @@ export default function ImportPdfScreen({ route, navigation }) {
                 }
             }
 
-            Alert.alert('Test Completado', 'Revisa la consola para ver los resultados');
+            // Usar WebAlert en web y Alert nativo en otras plataformas
+            const AlertToUse = Platform.OS === 'web' ? WebAlert : Alert;
+            AlertToUse.alert('Test Completado', 'Revisa la consola para ver los resultados');
         } catch (error) {
             console.error('❌ Error en test de conexión:', error);
-            Alert.alert('Error de Conexión', 'No se pudo conectar al backend. Revisa la consola.');
+            // Usar WebAlert en web y Alert nativo en otras plataformas
+            const AlertToUse = Platform.OS === 'web' ? WebAlert : Alert;
+            AlertToUse.alert('Error de Conexión', 'No se pudo conectar al backend. Revisa la consola.');
         }
     };
 

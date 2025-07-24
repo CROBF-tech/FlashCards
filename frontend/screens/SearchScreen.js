@@ -1,6 +1,7 @@
 // screens/SearchScreen.js
 import React, { useState, useEffect } from 'react';
-import { View, Text, TextInput, FlatList, TouchableOpacity, ActivityIndicator, StyleSheet } from 'react-native';
+import { View, Text, TextInput, FlatList, TouchableOpacity, ActivityIndicator, StyleSheet, Alert, Platform } from 'react-native';
+import WebAlert from '../components/WebAlert';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { AntDesign } from '@expo/vector-icons';
 import api from '../utils/api';
@@ -42,7 +43,9 @@ export default function SearchScreen({ navigation }) {
             setResults(response.data);
         } catch (err) {
             console.error('Error en la búsqueda:', err);
-            alert('Error al realizar la búsqueda. Intente nuevamente.');
+            // Usar WebAlert en web y Alert nativo en otras plataformas
+            const AlertToUse = Platform.OS === 'web' ? WebAlert : Alert;
+            AlertToUse.alert('Error', 'Error al realizar la búsqueda. Intente nuevamente.');
         } finally {
             setLoading(false);
         }

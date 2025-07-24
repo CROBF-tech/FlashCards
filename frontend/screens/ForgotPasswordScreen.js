@@ -11,6 +11,7 @@ import {
     ActivityIndicator,
     Alert,
 } from 'react-native';
+import WebAlert from '../components/WebAlert';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation } from '@react-navigation/native';
 import api from '../utils/api';
@@ -26,7 +27,9 @@ const ForgotPasswordScreen = () => {
     const handleForgotPassword = async () => {
         if (!email) {
             setMessage('Por favor, complete todos los campos');
-            Alert.alert('Error', 'Por favor, complete todos los campos');
+            // Usar WebAlert en web y Alert nativo en otras plataformas
+            const AlertToUse = Platform.OS === 'web' ? WebAlert : Alert;
+            AlertToUse.alert('Error', 'Por favor, complete todos los campos');
             return;
         }
 
@@ -35,12 +38,16 @@ const ForgotPasswordScreen = () => {
             const response = await api.post('/user/forgot-password', { email });
             const msg = response.data.message;
             setMessage(msg);
-            Alert.alert('Éxito', msg);
+            // Usar WebAlert en web y Alert nativo en otras plataformas
+            const AlertToUse = Platform.OS === 'web' ? WebAlert : Alert;
+            AlertToUse.alert('Éxito', msg);
             navigation.navigate('VerifyCode', { email: email });
         } catch (error) {
             console.error('Error:', error);
             setMessage('A ocurrido un error. Por favor, intente nuevamente.');
-            Alert.alert('Error', 'A ocurrido un error. Por favor, intente nuevamente.');
+            // Usar WebAlert en web y Alert nativo en otras plataformas
+            const AlertToUse = Platform.OS === 'web' ? WebAlert : Alert;
+            AlertToUse.alert('Error', 'A ocurrido un error. Por favor, intente nuevamente.');
         } finally {
             setIsSubmitting(false);
         }

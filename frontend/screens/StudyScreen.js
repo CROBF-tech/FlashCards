@@ -8,7 +8,10 @@ import {
     StyleSheet,
     Animated,
     Dimensions,
+    Alert,
+    Platform,
 } from 'react-native';
+import WebAlert from '../components/WebAlert';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { AntDesign } from '@expo/vector-icons';
 import api from '../utils/api';
@@ -72,7 +75,9 @@ export default function StudyScreen({ route, navigation }) {
             }
         } catch (err) {
             console.error('Error al enviar revisión:', err);
-            alert('Error al registrar la revisión. Intente nuevamente.');
+            // Usar WebAlert en web y Alert nativo en otras plataformas
+            const AlertToUse = Platform.OS === 'web' ? WebAlert : Alert;
+            AlertToUse.alert('Error', 'Error al registrar la revisión. Intente nuevamente.');
         }
     };
 

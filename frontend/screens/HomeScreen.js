@@ -1,6 +1,7 @@
 // screens/HomeScreen.js
 import React, { useState, useEffect } from 'react';
-import { View, Text, FlatList, TouchableOpacity, ActivityIndicator, StyleSheet, Alert } from 'react-native';
+import { View, Text, FlatList, TouchableOpacity, ActivityIndicator, StyleSheet, Alert, Platform } from 'react-native';
+import WebAlert from '../components/WebAlert';
 import { AntDesign } from '@expo/vector-icons';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import api from '../utils/api';
@@ -42,7 +43,9 @@ export default function HomeScreen({ navigation }) {
         try {
             await logout();
         } catch (error) {
-            Alert.alert('Error', 'No se pudo cerrar sesión');
+            // Usar WebAlert en web y Alert nativo en otras plataformas
+            const AlertToUse = Platform.OS === 'web' ? WebAlert : Alert;
+            AlertToUse.alert('Error', 'No se pudo cerrar sesión');
         }
     };
 

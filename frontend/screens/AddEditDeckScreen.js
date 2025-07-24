@@ -12,6 +12,7 @@ import {
     Platform,
     Alert,
 } from 'react-native';
+import WebAlert from '../components/WebAlert';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { AntDesign } from '@expo/vector-icons';
 import api from '../utils/api';
@@ -46,7 +47,9 @@ export default function AddEditDeckScreen({ route, navigation }) {
             navigation.goBack();
         } catch (err) {
             console.error('Error al guardar mazo:', err);
-            Alert.alert('Error', 'No se pudo guardar el mazo. Intente nuevamente.', [{ text: 'OK' }]);
+            // Usar WebAlert en web y Alert nativo en otras plataformas
+            const AlertToUse = Platform.OS === 'web' ? WebAlert : Alert;
+            AlertToUse.alert('Error', 'No se pudo guardar el mazo. Intente nuevamente.', [{ text: 'OK' }]);
         } finally {
             setIsSubmitting(false);
         }
